@@ -9,6 +9,11 @@ import { getToken } from "@/lib/auth";
 
 interface NavLink { label: string; href: string; }
 
+interface Props {
+  /** From /v1/home's `navigation.links` — omit to have Nav self-fetch it. */
+  navLinks?: NavLink[];
+}
+
 const FALLBACK_NAV: NavLink[] = [
   { label: "Shop",         href: "/shop" },
   { label: "Categories",   href: "/categories" },
@@ -17,29 +22,37 @@ const FALLBACK_NAV: NavLink[] = [
   { label: "Sale",         href: "/shop?sale=true" },
 ];
 
-export function Nav() {
+export function Nav({ navLinks: navLinksProp }: Props = {}) {
   const router = useRouter();
   const { cartCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [navLinks, setNavLinks] = useState<NavLink[]>(FALLBACK_NAV);
+  const [navLinks, setNavLinks] = useState<NavLink[]>(navLinksProp?.length ? navLinksProp : FALLBACK_NAV);
 
   useEffect(() => {
     setIsLoggedIn(!!getToken());
   }, []);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/cms/navigation`, {
+    if (navLinksProp && navLinksProp.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNavLinks(navLinksProp);
+      return;
+    }
+    // No prop (every page other than the homepage, which already fetched
+    // /v1/home itself) — reuse the same aggregated endpoint rather than the
+    // retired /v1/cms/navigation (see docs/theme-contract.md, mypos repo).
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
       headers: { Accept: "application/json" },
     })
       .then((r) => r.json())
       .then((res) => {
-        const items = Array.isArray(res.data) ? res.data : res.data?.links;
+        const items = res.data?.navigation?.links;
         if (items?.length) setNavLinks(items);
       })
       .catch(() => {/* keep fallback */});
-  }, []);
+  }, [navLinksProp]);
 
   function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();

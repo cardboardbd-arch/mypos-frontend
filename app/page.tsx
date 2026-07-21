@@ -78,8 +78,26 @@ interface HeroData {
   button_link: string;
 }
 
+interface NavLink { label: string; href: string; }
+interface FooterLink { label: string; href: string; }
+interface Feature { label: string; icon?: string; }
+interface SocialLink { platform: string; url: string; is_active?: boolean; }
+
+interface FooterData {
+  brand_name?: string;
+  brand_tagline?: string;
+  brand_description?: string;
+  copyright_text?: string;
+  quick_links?: FooterLink[];
+  customer_links?: FooterLink[];
+  feature_bar?: Feature[];
+}
+
 interface HomeData {
   hero: HeroData;
+  navigation?: { links: NavLink[] };
+  footer?: FooterData;
+  social_links?: SocialLink[];
   featured_categories: CategoryItem[];
   new_arrivals: ProductCard[];
   featured_products: ProductCard[];
@@ -152,7 +170,7 @@ export default function Home() {
 
   return (
     <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-      <Nav />
+      <Nav navLinks={data.navigation?.links ?? []} />
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
         <Hero data={data.hero} />
         <Categories categories={data.featured_categories ?? []} />
@@ -166,7 +184,7 @@ export default function Home() {
         <BigDealsBanner data={data.promo_banner ?? data.popup ?? null} />
         <FindUs stores={data.store_locations ?? []} />
       </div>
-      <Footer />
+      <Footer footer={data.footer} socialLinks={data.social_links} />
     </main>
   );
 }

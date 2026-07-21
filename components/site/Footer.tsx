@@ -18,6 +18,23 @@ interface FooterLink { label: string; href: string; }
 interface SocialLink { platform: string; url: string; is_active?: boolean; }
 interface Brand      { name: string; tagline: string; description: string; copyright: string; }
 
+/** Shape of /v1/home's `footer` field. */
+interface FooterData {
+  brand_name?: string;
+  brand_tagline?: string;
+  brand_description?: string;
+  copyright_text?: string;
+  quick_links?: FooterLink[];
+  customer_links?: FooterLink[];
+  feature_bar?: Feature[];
+}
+
+interface Props {
+  /** From /v1/home — omit to have Footer self-fetch it. */
+  footer?: FooterData;
+  socialLinks?: SocialLink[];
+}
+
 const FB_FEATURES: Feature[] = [
   { icon: "🏷️", label: "100+ BRANDS" },
   { icon: "🚚", label: "FREE DELIVERY" },
@@ -53,36 +70,48 @@ const FB_BRAND: Brand = {
   copyright: "© 2026 Pixelizz. All rights reserved.",
 };
 
-export function Footer() {
+export function Footer({ footer: footerProp, socialLinks: socialLinksProp }: Props = {}) {
   const [features,      setFeatures]      = useState<Feature[]>(FB_FEATURES);
   const [quickLinks,    setQuickLinks]    = useState<FooterLink[]>(FB_QUICK_LINKS);
   const [customerLinks, setCustomerLinks] = useState<FooterLink[]>(FB_CUSTOMER_LINKS);
   const [socialLinks,   setSocialLinks]   = useState<SocialLink[]>(FB_SOCIAL_LINKS);
   const [brand,         setBrand]         = useState<Brand>(FB_BRAND);
 
+  function applyFooterData(d?: FooterData, socials?: SocialLink[]) {
+    if (d) {
+      if (d.feature_bar?.length)       setFeatures(d.feature_bar);
+      if (d.quick_links?.length)       setQuickLinks(d.quick_links);
+      if (d.customer_links?.length)    setCustomerLinks(d.customer_links);
+      if (d.brand_name || d.brand_tagline || d.brand_description || d.copyright_text) {
+        setBrand({
+          name: d.brand_name ?? FB_BRAND.name,
+          tagline: d.brand_tagline ?? FB_BRAND.tagline,
+          description: d.brand_description ?? FB_BRAND.description,
+          copyright: d.copyright_text ?? FB_BRAND.copyright,
+        });
+      }
+    }
+    if (socials?.length) {
+      setSocialLinks(socials.filter((s) => s.is_active !== false));
+    }
+  }
+
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/cms/footer`, {
+    if (footerProp || socialLinksProp) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      applyFooterData(footerProp, socialLinksProp);
+      return;
+    }
+    // No props (every page other than the homepage, which already fetched
+    // /v1/home itself) — reuse the same aggregated endpoint rather than the
+    // retired /v1/cms/footer (see docs/theme-contract.md, mypos repo).
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
       headers: { Accept: "application/json" },
     })
       .then((r) => r.json())
-      .then((res) => {
-        const d = res.data;
-        if (!d) return;
-        if (d.feature_bar?.length)      setFeatures(d.feature_bar);
-        if (d.quick_links?.length)   setQuickLinks(d.quick_links);
-        if (d.customer_links?.length) setCustomerLinks(d.customer_links);
-        if (d.social_links?.length)  setSocialLinks(d.social_links.filter((s: SocialLink) => s.is_active !== false));
-        if (d.brand_name || d.brand_tagline || d.brand_description || d.copyright_text) {
-          setBrand({
-            name: d.brand_name ?? FB_BRAND.name,
-            tagline: d.brand_tagline ?? FB_BRAND.tagline,
-            description: d.brand_description ?? FB_BRAND.description,
-            copyright: d.copyright_text ?? FB_BRAND.copyright,
-          });
-        }
-      })
+      .then((res) => applyFooterData(res.data?.footer, res.data?.social_links))
       .catch(() => {/* keep fallback */});
-  }, []);
+  }, [footerProp, socialLinksProp]);
 
   return (
     <footer className="bg-black text-white mt-8">
