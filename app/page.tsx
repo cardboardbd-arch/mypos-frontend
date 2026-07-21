@@ -5,8 +5,6 @@ import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { Hero } from "@/components/site/Hero";
 import { Categories } from "@/components/site/Categories";
-import { NewArrivals } from "@/components/site/NewArrivals";
-import { SignatureProducts } from "@/components/site/SignatureProducts";
 import { CategoryBanner } from "@/components/site/CategoryBanner";
 import { DesignerGrid } from "@/components/site/DesignerGrid";
 import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
@@ -169,8 +167,6 @@ export default function Home() {
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
         <Hero data={data.hero} />
         <Categories categories={data.featured_categories ?? []} />
-        <NewArrivals products={data.new_arrivals ?? []} title="New Arrival" />
-        <SignatureProducts products={data.featured_products ?? []} />
         <CategoryBanner banners={data.banners ?? []} />
         <DesignerGrid
           sections={data.homepage_sections ?? []}
