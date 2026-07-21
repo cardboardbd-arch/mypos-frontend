@@ -5,6 +5,7 @@ import type { RawHomepageSection } from "./types";
 import { AnnouncementBarSection } from "./AnnouncementBarSection";
 import { ProductCarouselSection } from "./ProductCarouselSection";
 import { CategoryGridSection } from "./CategoryGridSection";
+import { CategoryShowcaseSection } from "./CategoryShowcaseSection";
 import { PromotionBannerSection } from "./PromotionBannerSection";
 import { FlashSaleSection } from "./FlashSaleSection";
 import { CollectionGridSection } from "./CollectionGridSection";
@@ -32,6 +33,7 @@ const COMPONENTS: Record<string, ComponentType<{ section: RawHomepageSection }>>
   showcase_products: ProductCarouselSection,
   categories: CategoryGridSection,
   featured_categories: CategoryGridSection,
+  category_showcase: CategoryShowcaseSection,
   promotion_banner: PromotionBannerSection,
   flash_sale: FlashSaleSection,
   featured_collections: CollectionGridSection,

@@ -68,6 +68,16 @@ export interface SectionBlogItem {
   cover_image: string | null;
 }
 
+// "category_showcase" type — curated tiles (HomepageService's category_showcase
+// branch), not a live catalog query: each item carries its own admin-uploaded
+// image/label, only optionally tied to a real category via category_id/slug.
+export interface SectionShowcaseItem {
+  category_id: number | null;
+  slug: string | null;
+  label: string | null;
+  image: string | null;
+}
+
 export interface RawHomepageSection {
   id: number;
   type: string;
@@ -79,7 +89,7 @@ export interface RawHomepageSection {
   config: Record<string, any> | any[];
   products?: SectionProduct[];
   product_count?: number;
-  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem>;
+  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem | SectionShowcaseItem>;
   item_count?: number;
   content?: Record<string, any>;
   flash_sale?: { ends_at: string; items: unknown[] } | null;
