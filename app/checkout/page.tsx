@@ -16,6 +16,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bkash" | "nagad" | "card">("cod");
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponError, setCouponError] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [placed, setPlaced] = useState(false);
@@ -28,7 +31,20 @@ export default function CheckoutPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const deliveryCharge = deliveryType === "inside" ? 60 : 120;
-  const displayTotal = cartTotal + deliveryCharge;
+  const discount = couponApplied ? couponDiscount : 0;
+  const displayTotal = Math.max(0, cartTotal - discount) + deliveryCharge;
+
+  // A coupon's discount can depend on the shipping charge (free_shipping
+  // type), so switching inside/outside Dhaka after applying invalidates the
+  // number shown — force a re-check rather than silently keep a stale one.
+  useEffect(() => {
+    if (couponApplied) {
+      setCouponApplied(false);
+      setCouponDiscount(0);
+      setCouponError("Delivery area changed — please re-apply your coupon.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryType]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -44,6 +60,51 @@ export default function CheckoutPage() {
     if (!form.address.trim()) errors.address = "Address is required";
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
+  }
+
+  async function handleApplyCoupon() {
+    const code = coupon.trim();
+    if (!code) return;
+
+    setCouponValidating(true);
+    setCouponError("");
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    try {
+      const params = new URLSearchParams({
+        code,
+        total: String(cartTotal),
+        shipping: String(deliveryCharge),
+      });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/coupons/validate?${params}`, { headers });
+      const data = await res.json();
+
+      if (data.valid) {
+        setCouponApplied(true);
+        setCouponDiscount(Number(data.discount_amount) || 0);
+        setCouponError("");
+      } else {
+        setCouponApplied(false);
+        setCouponDiscount(0);
+        setCouponError(data.message ?? "Invalid coupon code.");
+      }
+    } catch {
+      setCouponApplied(false);
+      setCouponDiscount(0);
+      setCouponError("Network error while checking that code. Please try again.");
+    } finally {
+      setCouponValidating(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setCoupon("");
+    setCouponApplied(false);
+    setCouponDiscount(0);
+    setCouponError("");
   }
 
   // bKash/Nagad are their own gateway slugs; the storefront's "Debit /
@@ -131,6 +192,15 @@ export default function CheckoutPage() {
           }
           setValidationErrors(fieldErrors);
           setError("Please fix the errors below.");
+          // The coupon passed a pre-check but was rejected at order-creation
+          // time (e.g. someone else used its last redemption in between) —
+          // drop it so the displayed total stops claiming a discount that
+          // was never applied.
+          if (fieldErrors.coupon_code) {
+            setCouponApplied(false);
+            setCouponDiscount(0);
+            setCouponError(fieldErrors.coupon_code);
+          }
         } else {
           setError(data.message ?? `Order failed (HTTP ${res.status})`);
         }
@@ -443,18 +513,31 @@ export default function CheckoutPage() {
                     <div className="relative flex-1">
                       <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                       <input
-                        value={coupon} onChange={e => setCoupon(e.target.value.toUpperCase())}
+                        value={coupon}
+                        onChange={e => { setCoupon(e.target.value.toUpperCase()); setCouponError(""); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleApplyCoupon(); } }}
                         placeholder="Coupon code"
-                        disabled={couponApplied}
-                        className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white disabled:opacity-50" />
+                        disabled={couponApplied || couponValidating}
+                        className={`w-full pl-8 pr-3 py-2.5 border rounded-xl text-xs focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white disabled:opacity-50 ${couponError ? "border-red-300" : "border-gray-200"}`} />
                     </div>
-                    <button onClick={() => setCouponApplied(true)} disabled={couponApplied || !coupon.trim()}
-                      className="px-4 py-2.5 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition disabled:opacity-40 shrink-0">
-                      {couponApplied ? "Applied ✓" : "Apply"}
-                    </button>
+                    {couponApplied ? (
+                      <button onClick={handleRemoveCoupon}
+                        className="px-4 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-200 transition shrink-0">
+                        Remove
+                      </button>
+                    ) : (
+                      <button onClick={handleApplyCoupon} disabled={couponValidating || !coupon.trim()}
+                        className="px-4 py-2.5 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition disabled:opacity-40 shrink-0">
+                        {couponValidating ? "Checking…" : "Apply"}
+                      </button>
+                    )}
                   </div>
+                  {couponError && <p className="text-red-500 text-xs mt-1.5">{couponError}</p>}
+                  {validationErrors.coupon_code && !couponError && (
+                    <p className="text-red-500 text-xs mt-1.5">{validationErrors.coupon_code}</p>
+                  )}
                   {couponApplied && (
-                    <p className="text-[11px] text-green-600 font-bold mt-1.5">🎉 Coupon applied! Discount will be calculated at checkout.</p>
+                    <p className="text-[11px] text-green-600 font-bold mt-1.5">🎉 Coupon applied — you saved Tk {couponDiscount.toLocaleString()}!</p>
                   )}
                 </div>
 
@@ -464,6 +547,12 @@ export default function CheckoutPage() {
                     <span>Subtotal</span>
                     <span className="font-bold text-gray-800">Tk {cartTotal.toLocaleString()}</span>
                   </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Coupon Discount</span>
+                      <span className="font-bold">− Tk {discount.toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>Delivery Charge</span>
                     <span className="font-bold text-gray-800">Tk {deliveryCharge}</span>
