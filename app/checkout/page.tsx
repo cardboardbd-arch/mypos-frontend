@@ -16,11 +16,15 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bkash" | "nagad" | "card">("cod");
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
-  const [txnId, setTxnId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [error, setError] = useState("");
+  // Set only if the order was created but starting the gateway payment
+  // failed — the order already exists, so this offers a retry rather than
+  // a dead end.
+  const [paymentRetry, setPaymentRetry] = useState<{ orderId: number; orderNumber: string; gateway: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const deliveryCharge = deliveryType === "inside" ? 60 : 120;
@@ -38,16 +42,45 @@ export default function CheckoutPage() {
     if (!form.name.trim()) errors.name = "Name is required";
     if (!form.phone.trim()) errors.phone = "Phone is required";
     if (!form.address.trim()) errors.address = "Address is required";
-    if ((paymentMethod === "bkash" || paymentMethod === "nagad") && !txnId.trim()) {
-      errors.txnId = "Transaction ID is required for this payment method";
-    }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
+  }
+
+  // bKash/Nagad are their own gateway slugs; the storefront's "Debit /
+  // Credit Card" option is processed through SSLCommerz.
+  function gatewaySlug(): string {
+    return paymentMethod === "card" ? "sslcommerz" : paymentMethod;
+  }
+
+  async function startGatewayPayment(orderId: number, orderNo: string) {
+    setRedirecting(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/initiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ order_id: orderId, gateway: gatewaySlug() }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.payment_url) {
+        window.location.href = data.payment_url;
+        return; // page is navigating away
+      }
+
+      setRedirecting(false);
+      setPaymentRetry({ orderId, orderNumber: orderNo, gateway: gatewaySlug() });
+      setError(data.message ?? "Could not start payment. You can try again below.");
+    } catch {
+      setRedirecting(false);
+      setPaymentRetry({ orderId, orderNumber: orderNo, gateway: gatewaySlug() });
+      setError("Network error while starting payment. You can try again below.");
+    }
   }
 
   async function handleSubmit() {
     setError("");
     setValidationErrors({});
+    setPaymentRetry(null);
     if (!validateForm()) return;
     if (items.length === 0) {
       setError("Your cart is empty.");
@@ -105,16 +138,28 @@ export default function CheckoutPage() {
         return;
       }
 
-      if (data.order_number) {
+      if (!data.order_number) {
+        setError(data.message ?? "Order failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      await refreshCart();
+
+      if (paymentMethod === "cod") {
         setPlaced(true);
         setOrderNumber(data.order_number);
-        await refreshCart();
-      } else {
-        setError(data.message ?? "Order failed. Please try again.");
+        setLoading(false);
+        return;
       }
+
+      // Order exists now (payment_status: pending) — send the shopper to
+      // the real gateway. Success/failure lands back on /payment/success
+      // or /payment/failed, which independently verify status server-side.
+      await startGatewayPayment(data.id, data.order_number);
+      setLoading(false);
     } catch {
       setError("Network error. Please check your connection and try again.");
-    } finally {
       setLoading(false);
     }
   }
@@ -339,20 +384,11 @@ export default function CheckoutPage() {
                     ))}
                   </div>
 
-                  {/* MFS transaction ID */}
-                  {(paymentMethod === "bkash" || paymentMethod === "nagad") && (
-                    <div className={`rounded-xl p-4 border text-sm ${paymentMethod === "bkash" ? "bg-red-50 border-red-100 text-red-800" : "bg-orange-50 border-orange-100 text-orange-800"}`}>
-                      <p className="font-bold mb-1">
-                        Send <strong>Tk {displayTotal.toLocaleString()}</strong> to{" "}
-                        <span className="font-black">01XXXXXXXXX</span>{" "}
-                        ({paymentMethod === "bkash" ? "bKash Merchant" : "Nagad"})
+                  {(paymentMethod === "bkash" || paymentMethod === "nagad" || paymentMethod === "card") && (
+                    <div className={`rounded-xl p-4 border text-sm ${paymentMethod === "bkash" ? "bg-red-50 border-red-100 text-red-800" : paymentMethod === "nagad" ? "bg-orange-50 border-orange-100 text-orange-800" : "bg-blue-50 border-blue-100 text-blue-800"}`}>
+                      <p className="font-bold">
+                        You&apos;ll be redirected to {paymentMethod === "bkash" ? "bKash" : paymentMethod === "nagad" ? "Nagad" : "the card payment gateway"} to pay <strong>Tk {displayTotal.toLocaleString()}</strong> after placing this order.
                       </p>
-                      <p className="text-xs opacity-75 mb-3">Use &quot;Send Money&quot; and enter the Transaction ID below.</p>
-                      <input
-                        value={txnId} onChange={e => setTxnId(e.target.value)}
-                        placeholder={`Enter ${paymentMethod === "bkash" ? "bKash" : "Nagad"} Transaction ID`}
-                        className={`w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none border bg-white ${validationErrors.txnId ? "border-red-400" : paymentMethod === "bkash" ? "border-red-200 focus:border-red-400" : "border-orange-200 focus:border-orange-400"}`} />
-                      {validationErrors.txnId && <p className="text-red-500 text-xs mt-1">{validationErrors.txnId}</p>}
                     </div>
                   )}
 
@@ -440,18 +476,27 @@ export default function CheckoutPage() {
 
                 {/* CTA */}
                 <div className="px-5 pb-5">
-                  <button onClick={handleSubmit} disabled={loading}
-                    className="w-full bg-black hover:bg-gray-900 text-white py-4 text-sm font-black uppercase tracking-widest rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                        </svg>
-                        Placing Order...
-                      </>
-                    ) : "Place Order →"}
-                  </button>
+                  {paymentRetry ? (
+                    <button
+                      onClick={() => startGatewayPayment(paymentRetry.orderId, paymentRetry.orderNumber)}
+                      disabled={redirecting}
+                      className="w-full bg-black hover:bg-gray-900 text-white py-4 text-sm font-black uppercase tracking-widest rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                      {redirecting ? "Redirecting…" : `Retry Payment for #${paymentRetry.orderNumber} →`}
+                    </button>
+                  ) : (
+                    <button onClick={handleSubmit} disabled={loading || redirecting}
+                      className="w-full bg-black hover:bg-gray-900 text-white py-4 text-sm font-black uppercase tracking-widest rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                      {loading || redirecting ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                          </svg>
+                          {redirecting ? "Redirecting to payment gateway…" : "Placing Order..."}
+                        </>
+                      ) : "Place Order →"}
+                    </button>
+                  )}
 
                   {/* Trust badges */}
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
