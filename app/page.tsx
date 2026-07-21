@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { Hero } from "@/components/site/Hero";
 import { Categories } from "@/components/site/Categories";
 import { CategoryBanner } from "@/components/site/CategoryBanner";
 import { DesignerGrid } from "@/components/site/DesignerGrid";
 import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
+import { HeroSliderSection } from "@/components/site/sections/HeroSliderSection";
 import type { RawHomepageSection } from "@/components/site/sections/types";
 import { BigDealsBanner } from "@/components/site/BigDealsBanner";
 import { FindUs } from "@/components/site/FindUs";
@@ -61,16 +61,6 @@ interface Store {
   map_link?: string | null;
 }
 
-interface HeroData {
-  image: string | null;
-  mobile_image: string | null;
-  badge_text: string;
-  heading: string;
-  subheading: string;
-  button_text: string;
-  button_link: string;
-}
-
 interface NavLink { label: string; href: string; }
 interface FooterLink { label: string; href: string; }
 interface Feature { label: string; icon?: string; }
@@ -87,7 +77,6 @@ interface FooterData {
 }
 
 interface HomeData {
-  hero: HeroData;
   navigation?: { links: NavLink[] };
   footer?: FooterData;
   social_links?: SocialLink[];
@@ -161,11 +150,13 @@ export default function Home() {
     );
   }
 
+  const heroSection = data.homepage_sections?.find((s) => s.type === "hero_slider");
+
   return (
     <main className="bg-white text-gray-900 w-full overflow-x-hidden">
       <Nav navLinks={data.navigation?.links ?? []} />
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
-        <Hero data={data.hero} />
+        {heroSection && <HeroSliderSection section={heroSection} />}
         <Categories categories={data.featured_categories ?? []} />
         <CategoryBanner banners={data.banners ?? []} />
         <DesignerGrid
