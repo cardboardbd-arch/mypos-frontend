@@ -13,8 +13,8 @@ interface Section {
   type?: string;
   title: string;
   category_slug: string;
-  image: string;
-  view_all_link: string;
+  image?: string | null;
+  view_all_link?: string | null;
 }
 
 // homepage_sections carries every CMS section type (hero, banners, blog,

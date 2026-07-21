@@ -9,6 +9,8 @@ import { NewArrivals } from "@/components/site/NewArrivals";
 import { SignatureProducts } from "@/components/site/SignatureProducts";
 import { CategoryBanner } from "@/components/site/CategoryBanner";
 import { DesignerGrid } from "@/components/site/DesignerGrid";
+import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
+import type { RawHomepageSection } from "@/components/site/sections/types";
 import { BigDealsBanner } from "@/components/site/BigDealsBanner";
 import { FindUs } from "@/components/site/FindUs";
 
@@ -42,14 +44,6 @@ interface Banner {
   slug: string;
   image: string;
   link: string;
-}
-
-interface DesignerSection {
-  type?: string;
-  title: string;
-  category_slug: string;
-  image: string;
-  view_all_link: string;
 }
 
 interface PromoBanner {
@@ -103,7 +97,7 @@ interface HomeData {
   new_arrivals: ProductCard[];
   featured_products: ProductCard[];
   banners: Banner[];
-  homepage_sections: DesignerSection[];
+  homepage_sections: RawHomepageSection[];
   promo_banner: PromoBanner | null;
   popup: any;
   store_locations: Store[];
@@ -182,6 +176,7 @@ export default function Home() {
           sections={data.homepage_sections ?? []}
           products={data.featured_products ?? []}
         />
+        <CmsHomepageSections sections={data.homepage_sections ?? []} />
         <BigDealsBanner data={data.promo_banner ?? data.popup ?? null} />
         <FindUs stores={data.store_locations ?? []} />
       </div>
