@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProductCardSmall } from "./ProductCardSmall";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface Product {
   id: number; name: string; slug: string; thumbnail?: string | null;
@@ -69,7 +70,7 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
           .map((s) => ({
             title: s.title,
             category_slug: s.category_slug,
-            image: s.image ?? "",
+            image: resolveMediaUrl(s.image) ?? "",
             view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
           }))
       );
@@ -85,7 +86,7 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
             res.data.map((s: any) => ({
               title: s.title,
               category_slug: s.category_slug,
-              image: s.image ?? "",
+              image: resolveMediaUrl(s.image) ?? "",
               view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
             }))
           );

@@ -20,7 +20,7 @@ export function PromotionBannerSection({ section }: Props) {
 
   if (!config.heading && !section.image) return null;
 
-  const image = section.image ?? resolveMediaUrl(config.image);
+  const image = resolveMediaUrl(section.image) ?? resolveMediaUrl(config.image);
   const bg = config.background_color || "#111111";
 
   const inner = (

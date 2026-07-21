@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/media";
 import type { RawHomepageSection } from "./types";
 
 interface Props {
@@ -17,6 +18,8 @@ export function AboutSection({ section }: Props) {
   };
 
   if (!content.heading && !content.short_description) return null;
+
+  const image = resolveMediaUrl(content.image);
 
   return (
     <section className="w-full">
@@ -42,9 +45,9 @@ export function AboutSection({ section }: Props) {
           )}
         </div>
         <div className="hidden md:block bg-gray-100 min-h-[220px]">
-          {content.image && (
+          {image && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={content.image} alt="" className="w-full h-full object-cover" />
+            <img src={image} alt="" className="w-full h-full object-cover" />
           )}
         </div>
       </div>

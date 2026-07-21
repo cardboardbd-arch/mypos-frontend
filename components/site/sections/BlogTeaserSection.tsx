@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Newspaper } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/media";
 import type { RawHomepageSection, SectionBlogItem } from "./types";
 
 interface Props {
@@ -29,17 +30,19 @@ export function BlogTeaserSection({ section }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((post) => (
+        {items.map((post) => {
+          const cover = resolveMediaUrl(post.cover_image);
+          return (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
             className="group block rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow"
           >
             <div className="aspect-[16/10] bg-gray-100 flex items-center justify-center overflow-hidden">
-              {post.cover_image ? (
+              {cover ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={post.cover_image}
+                  src={cover}
                   alt={post.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
@@ -54,7 +57,8 @@ export function BlogTeaserSection({ section }: Props) {
               )}
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

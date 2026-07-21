@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/media";
 import type { RawHomepageSection, SectionCategoryItem } from "./types";
 
 interface Props {
@@ -28,16 +29,18 @@ export function CategoryGridSection({ section }: Props) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-[10px]">
-        {items.map((cat) => (
+        {items.map((cat) => {
+          const image = resolveMediaUrl(cat.image);
+          return (
           <Link
             key={cat.id}
             href={`/shop?category=${cat.slug}`}
             className="group relative aspect-square rounded-2xl overflow-hidden bg-gray-100"
           >
-            {cat.image ? (
+            {image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={cat.image}
+                src={image}
                 alt={cat.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
@@ -59,7 +62,8 @@ export function CategoryGridSection({ section }: Props) {
               </span>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

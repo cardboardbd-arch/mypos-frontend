@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/media";
 import type { RawHomepageSection, SectionBrandItem } from "./types";
 
 interface Props {
@@ -28,15 +29,17 @@ export function BrandGridSection({ section }: Props) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {items.map((b) => (
+        {items.map((b) => {
+          const logo = resolveMediaUrl(b.logo);
+          return (
           <Link
             key={b.id}
             href={`/shop?brand=${b.slug}`}
             className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 hover:border-black transition-colors p-5 text-center"
           >
-            {b.logo ? (
+            {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={b.logo} alt={b.name} className="h-10 w-full object-contain" />
+              <img src={logo} alt={b.name} className="h-10 w-full object-contain" />
             ) : (
               <span className="text-lg font-black uppercase tracking-tight text-gray-900">
                 {b.name}
@@ -46,7 +49,8 @@ export function BrandGridSection({ section }: Props) {
               <span className="text-[11px] text-gray-400">{b.product_count} products</span>
             )}
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

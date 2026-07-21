@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/media";
 import type { RawHomepageSection, SectionCollectionItem } from "./types";
 
 interface Props {
@@ -29,7 +30,7 @@ export function CollectionGridSection({ section }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {items.map((c) => {
-          const image = c.cover_image ?? c.featured_image ?? c.banner;
+          const image = resolveMediaUrl(c.cover_image ?? c.featured_image ?? c.banner);
           return (
             <Link
               key={c.id}
