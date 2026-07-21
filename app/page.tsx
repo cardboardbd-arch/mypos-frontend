@@ -45,6 +45,7 @@ interface Banner {
 }
 
 interface DesignerSection {
+  type?: string;
   title: string;
   category_slug: string;
   image: string;

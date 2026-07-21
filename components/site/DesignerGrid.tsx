@@ -10,11 +10,19 @@ interface Product {
 }
 
 interface Section {
+  type?: string;
   title: string;
   category_slug: string;
   image: string;
   view_all_link: string;
 }
+
+// homepage_sections carries every CMS section type (hero, banners, blog,
+// newsletter, ...) — most of those already render via their own dedicated
+// component elsewhere on the home page. DesignerGrid only knows how to lay
+// out the banner-tile + product-row style, which is what `designer_grid`
+// rows are authored as; every other type is skipped here, not rendered.
+const RENDERABLE_TYPES = new Set(["designer_grid"]);
 
 const FALLBACK_SECTIONS: Section[] = [
   {
@@ -56,12 +64,14 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
   useEffect(() => {
     if (sectionsProp && sectionsProp.length > 0) {
       setSections(
-        sectionsProp.map((s) => ({
-          title: s.title,
-          category_slug: s.category_slug,
-          image: s.image ?? "",
-          view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
-        }))
+        sectionsProp
+          .filter((s) => RENDERABLE_TYPES.has(s.type ?? ""))
+          .map((s) => ({
+            title: s.title,
+            category_slug: s.category_slug,
+            image: s.image ?? "",
+            view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
+          }))
       );
       return;
     }

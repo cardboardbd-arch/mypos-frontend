@@ -20,6 +20,9 @@ interface Variant {
   price: number;
   compare_price?: number;
   stock_quantity: number;
+  available_stock?: number;
+  stock_status?: string;
+  can_purchase?: boolean;
   image?: string | null;
   attributes?: VariantAttribute[];
 }
@@ -328,13 +331,11 @@ export default function ProductDetailPage() {
             {/* Stock */}
             <p
               className={`text-xs font-medium ${
-                (selectedVariant?.stock_quantity ?? 0) > 0
-                  ? "text-green-600"
-                  : "text-red-500"
+                selectedVariant?.can_purchase ? "text-green-600" : "text-red-500"
               }`}
             >
-              {(selectedVariant?.stock_quantity ?? 0) > 0
-                ? `In Stock (${selectedVariant!.stock_quantity} available)`
+              {selectedVariant?.can_purchase
+                ? `In Stock (${selectedVariant.available_stock ?? 0} available)`
                 : "Out of Stock"}
             </p>
 
@@ -366,13 +367,15 @@ export default function ProductDetailPage() {
             <div className="flex gap-3 mt-2">
               <button
                 onClick={handleBuyNow}
-                className="flex-1 bg-black hover:bg-gray-800 text-white py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm flex items-center justify-center gap-2"
+                disabled={!selectedVariant?.can_purchase}
+                className="flex-1 bg-black hover:bg-gray-800 text-white py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black"
               >
                 <ShoppingCart className="h-4 w-4" /> Buy Now
               </button>
               <button
                 onClick={handleAddToCart}
-                className="flex-1 border border-gray-200 hover:border-black text-gray-900 py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm"
+                disabled={!selectedVariant?.can_purchase}
+                className="flex-1 border border-gray-200 hover:border-black text-gray-900 py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200"
               >
                 Add to Cart
               </button>
