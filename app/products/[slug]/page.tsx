@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { ShoppingCart, Heart, ChevronRight } from "lucide-react";
 import { useCart } from "@/lib/cart";
+
+interface VariantAttribute {
+  attribute_id: number;
+  attribute_name: string;
+  value_id: number;
+  value: string;
+}
 
 interface Variant {
   id: number;
@@ -13,7 +20,22 @@ interface Variant {
   price: number;
   compare_price?: number;
   stock_quantity: number;
-  attributes?: Record<string, string>;
+  image?: string | null;
+  attributes?: VariantAttribute[];
+}
+
+/**
+ * {attribute_name: value} for one variant, e.g. {Size: "M", Color: "White"}.
+ * Guards against non-array `attributes` (some older variants in this system
+ * still carry a legacy flat {size, color} shape instead of the current
+ * [{attribute_name, value}] one) by treating anything unexpected as "no
+ * attributes" rather than crashing.
+ */
+function attrMap(variant: Variant): Record<string, string> {
+  const map: Record<string, string> = {};
+  if (!Array.isArray(variant.attributes)) return map;
+  for (const a of variant.attributes) map[a.attribute_name] = a.value;
+  return map;
 }
 
 interface Product {
@@ -39,8 +61,50 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
+  const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+
+  // One row per attribute name across all variants, e.g. {Size: ["S","M","L"], Color: ["White","Blue"]}.
+  const attributeGroups = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    for (const v of product?.variants ?? []) {
+      const vAttrs = attrMap(v);
+      for (const [name, value] of Object.entries(vAttrs)) {
+        if (!groups[name]) groups[name] = [];
+        if (!groups[name].includes(value)) groups[name].push(value);
+      }
+    }
+    return groups;
+  }, [product]);
+
+  function findVariant(attrs: Record<string, string>): Variant | undefined {
+    return product?.variants.find((v) => {
+      const vAttrs = attrMap(v);
+      return Object.keys(attrs).every((name) => vAttrs[name] === attrs[name]);
+    });
+  }
+
+  // Whether `value` for `attributeName` is reachable given what's already selected for every other attribute.
+  function isAttributeValueAvailable(attributeName: string, value: string): boolean {
+    return !!product?.variants.some((v) => {
+      const vAttrs = attrMap(v);
+      if (vAttrs[attributeName] !== value) return false;
+      return Object.keys(selectedAttrs).every(
+        (otherName) => otherName === attributeName || vAttrs[otherName] === selectedAttrs[otherName]
+      );
+    });
+  }
+
+  function handleSelectAttribute(attributeName: string, value: string) {
+    if (!isAttributeValueAvailable(attributeName, value)) return;
+    const nextAttrs = { ...selectedAttrs, [attributeName]: value };
+    const variant = findVariant(nextAttrs);
+    if (!variant) return;
+    setSelectedAttrs(nextAttrs);
+    setSelectedVariant(variant);
+    if (variant.image) setSelectedImage(variant.image);
+  }
 
   function handleAddToCart() {
     if (!product || !selectedVariant) return;
@@ -54,7 +118,7 @@ export default function ProductDetailPage() {
       price: selectedVariant.price,
       compare_price: selectedVariant.compare_price,
       thumbnail: product.featured_image ?? undefined,
-      attributes: selectedVariant.attributes,
+      attributes: attrMap(selectedVariant),
       quantity: quantity,
     }, quantity);
   }
@@ -74,9 +138,11 @@ export default function ProductDetailPage() {
       })
       .then((res) => {
         const p = res.data as Product;
+        const firstVariant = p.variants?.[0] ?? null;
         setProduct(p);
-        setSelectedVariant(p.variants?.[0] ?? null);
-        setSelectedImage(p.featured_image ?? p.gallery?.[0]?.image ?? null);
+        setSelectedVariant(firstVariant);
+        setSelectedAttrs(firstVariant ? attrMap(firstVariant) : {});
+        setSelectedImage(firstVariant?.image ?? p.featured_image ?? p.gallery?.[0]?.image ?? null);
         setLoading(false);
       })
       .catch(() => {
@@ -229,82 +295,35 @@ export default function ProductDetailPage() {
               </p>
             )}
 
-            {/* Size / Color Selectors */}
-            {(() => {
-              const sizes = [...new Set(product.variants.map((v) => v.attributes?.size).filter(Boolean))];
-              const colors = [...new Set(product.variants.map((v) => v.attributes?.color).filter(Boolean))];
-
-              return (
-                <>
-                  {sizes.length > 0 && (
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                        Size:{" "}
-                        <span className="text-black">
-                          {selectedVariant?.attributes?.size}
-                        </span>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {sizes.map((size) => {
-                          const variant = product.variants.find(
-                            (v) => v.attributes?.size === size
-                          );
-                          const isSelected =
-                            selectedVariant?.attributes?.size === size;
-                          const inStock = (variant?.stock_quantity ?? 0) > 0;
-                          return (
-                            <button
-                              key={size}
-                              onClick={() =>
-                                variant && setSelectedVariant(variant)
-                              }
-                              disabled={!inStock}
-                              className={`w-12 h-12 text-xs font-bold border rounded-lg transition
-                                ${isSelected ? "bg-black text-white border-black" : "border-gray-200 hover:border-black"}
-                                ${!inStock ? "opacity-30 cursor-not-allowed line-through" : ""}`}
-                            >
-                              {size}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {colors.length > 1 && (
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                        Color:{" "}
-                        <span className="text-black">
-                          {selectedVariant?.attributes?.color}
-                        </span>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {colors.map((color) => {
-                          const variant = product.variants.find(
-                            (v) => v.attributes?.color === color
-                          );
-                          const isSelected =
-                            selectedVariant?.attributes?.color === color;
-                          return (
-                            <button
-                              key={color}
-                              onClick={() =>
-                                variant && setSelectedVariant(variant)
-                              }
-                              className={`px-4 py-2 text-xs font-bold border rounded-lg transition
-                                ${isSelected ? "bg-black text-white border-black" : "border-gray-200 hover:border-black"}`}
-                            >
-                              {color}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+            {/* Attribute selectors — one row per attribute name found across
+                this product's variants (Size, Color, ...). A product with a
+                single variant and no attributes renders none of this. */}
+            {Object.entries(attributeGroups).map(([attributeName, values]) => (
+              <div key={attributeName}>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  {attributeName}:{" "}
+                  <span className="text-black">{selectedAttrs[attributeName]}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {values.map((value) => {
+                    const available = isAttributeValueAvailable(attributeName, value);
+                    const isSelected = selectedAttrs[attributeName] === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => handleSelectAttribute(attributeName, value)}
+                        disabled={!available}
+                        className={`min-w-12 h-12 px-3 text-xs font-bold border rounded-lg transition
+                          ${isSelected ? "bg-black text-white border-black" : "border-gray-200 hover:border-black"}
+                          ${!available ? "opacity-30 cursor-not-allowed line-through" : ""}`}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
             {/* Stock */}
             <p
