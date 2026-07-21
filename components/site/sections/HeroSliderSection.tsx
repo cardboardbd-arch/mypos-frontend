@@ -51,7 +51,12 @@ export function HeroSliderSection({ section }: Props) {
   const image = resolveMediaUrl(slide.image);
 
   return (
-    <section className="relative w-full h-[380px] md:h-[540px] overflow-hidden">
+    // Full-bleed: breaks out of the page's max-w-[1400px]/px-* content column
+    // regardless of that column's padding, via the standard viewport-width
+    // technique (left-1/2 + -translate-x-1/2 centers a w-screen element on
+    // the viewport). <main> keeps overflow-x-hidden, so this never causes a
+    // page-level horizontal scrollbar.
+    <section className="relative left-1/2 w-screen -translate-x-1/2 h-[380px] md:h-[540px] overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
@@ -72,7 +77,10 @@ export function HeroSliderSection({ section }: Props) {
 
       <div className="absolute inset-0 bg-black/40" />
 
-      <div className="relative h-full flex flex-col items-center justify-center px-4 text-center">
+      {/* Content stays readable on ultra-wide screens even though the section
+          itself is full-bleed — background image/overlay span the viewport,
+          text/CTA are capped at the site's normal content width. */}
+      <div className="relative h-full max-w-[1400px] mx-auto flex flex-col items-center justify-center px-6 lg:px-10 text-center">
         {slide.badge_text && (
           <motion.p
             key={`badge-${index}`}
