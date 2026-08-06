@@ -106,35 +106,39 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
               <h2 className="text-lg font-black uppercase tracking-tight text-gray-900">
                 {section.title}
               </h2>
-              <Link
-                href={section.view_all_link}
-                className="text-sm font-bold text-gray-500 hover:text-black transition"
-              >
-                View All →
-              </Link>
+              {section.view_all_link && (
+                <Link
+                  href={section.view_all_link}
+                  className="text-sm font-bold text-gray-500 hover:text-black transition"
+                >
+                  View All →
+                </Link>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-6 gap-[6px]">
-              <Link
-                href={section.view_all_link}
-                className="hidden md:block group relative overflow-hidden rounded-xl bg-gray-200 md:col-span-2 md:row-span-2"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={section.image}
-                  alt={section.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                <div className="absolute bottom-5 left-4 right-4">
-                  <p className="text-white font-black text-base uppercase tracking-wide leading-tight">
-                    {section.title}
-                  </p>
-                  <span className="inline-block mt-2 text-[9px] font-black uppercase tracking-widest bg-white text-black px-3 py-1.5 rounded-sm">
-                    Shop Now →
-                  </span>
-                </div>
-              </Link>
+              {section.view_all_link && (
+                <Link
+                  href={section.view_all_link}
+                  className="hidden md:block group relative overflow-hidden rounded-xl bg-gray-200 md:col-span-2 md:row-span-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={section.image ?? undefined}
+                    alt={section.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute bottom-5 left-4 right-4">
+                    <p className="text-white font-black text-base uppercase tracking-wide leading-tight">
+                      {section.title}
+                    </p>
+                    <span className="inline-block mt-2 text-[9px] font-black uppercase tracking-widest bg-white text-black px-3 py-1.5 rounded-sm">
+                      Shop Now →
+                    </span>
+                  </div>
+                </Link>
+              )}
 
               {sectionProducts.map((p, idx) => {
                 const isLast = idx === 7;
@@ -148,7 +152,7 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
                       price={p.variants?.[0]?.price ?? 0}
                       compare_price={p.variants?.[0]?.compare_price}
                     />
-                    {isLast && (
+                    {isLast && section.view_all_link && (
                       <Link
                         href={section.view_all_link}
                         className="absolute inset-0 bg-black/65 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-black/75 transition"

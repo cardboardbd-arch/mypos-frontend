@@ -35,8 +35,12 @@ interface Props {
 }
 
 export function HeroSliderSection({ section }: Props) {
-  const slides: Slide[] = Array.isArray(section.config?.slides) ? section.config.slides : [];
-  const autoplay = section.config?.autoplay !== false;
+  // section.config is typed Record<string, any> | any[] (an empty PHP
+  // associative array serializes to JSON as [] rather than {}) — normalize
+  // the array case to {} first so property access below type-checks.
+  const config = Array.isArray(section.config) ? {} : (section.config ?? {});
+  const slides: Slide[] = Array.isArray(config.slides) ? config.slides : [];
+  const autoplay = config.autoplay !== false;
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
