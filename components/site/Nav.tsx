@@ -12,6 +12,10 @@ interface NavLink { label: string; href: string; }
 interface Props {
   /** From /v1/home's `navigation.links` — omit to have Nav self-fetch it. */
   navLinks?: NavLink[];
+  /** From /v1/home's `site.logo` — omit to have Nav self-fetch it. */
+  logoUrl?: string | null;
+  /** From /v1/home's `site.name` — omit to have Nav self-fetch it. */
+  siteName?: string | null;
 }
 
 const FALLBACK_NAV: NavLink[] = [
@@ -22,27 +26,42 @@ const FALLBACK_NAV: NavLink[] = [
   { label: "Sale",         href: "/shop?sale=true" },
 ];
 
-export function Nav({ navLinks: navLinksProp }: Props = {}) {
+export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: siteNameProp }: Props = {}) {
   const router = useRouter();
   const { cartCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [navLinks, setNavLinks] = useState<NavLink[]>(navLinksProp?.length ? navLinksProp : FALLBACK_NAV);
+  // Admin-uploaded logo/site name (GeneralSettings). null/undefined means
+  // "no logo configured" — the static PIXELIZZ wordmark stays as the
+  // fallback, it's never left blank.
+  const [logoUrl, setLogoUrl] = useState<string | null>(logoUrlProp ?? null);
+  const [siteName, setSiteName] = useState<string | null>(siteNameProp ?? null);
 
   useEffect(() => {
     setIsLoggedIn(!!getToken());
   }, []);
 
   useEffect(() => {
-    if (navLinksProp && navLinksProp.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNavLinks(navLinksProp);
+    if (navLinksProp !== undefined || logoUrlProp !== undefined || siteNameProp !== undefined) {
+      // The homepage already fetched /v1/home itself and passed these
+      // down — no second request needed.
+      if (navLinksProp && navLinksProp.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setNavLinks(navLinksProp);
+      }
+      if (logoUrlProp !== undefined) {
+        setLogoUrl(logoUrlProp);
+      }
+      if (siteNameProp !== undefined) {
+        setSiteName(siteNameProp);
+      }
       return;
     }
-    // No prop (every page other than the homepage, which already fetched
-    // /v1/home itself) — reuse the same aggregated endpoint rather than the
-    // retired /v1/cms/navigation (see docs/theme-contract.md, mypos repo).
+    // No props (every page other than the homepage) — reuse the same
+    // aggregated endpoint rather than the retired /v1/cms/navigation (see
+    // docs/theme-contract.md, mypos repo) for nav links, logo, and site name.
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
       headers: { Accept: "application/json" },
     })
@@ -50,9 +69,11 @@ export function Nav({ navLinks: navLinksProp }: Props = {}) {
       .then((res) => {
         const items = res.data?.navigation?.links;
         if (items?.length) setNavLinks(items);
+        if (res.data?.site?.logo) setLogoUrl(res.data.site.logo);
+        if (res.data?.site?.name) setSiteName(res.data.site.name);
       })
       .catch(() => {/* keep fallback */});
-  }, [navLinksProp]);
+  }, [navLinksProp, logoUrlProp, siteNameProp]);
 
   function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -67,14 +88,23 @@ export function Nav({ navLinks: navLinksProp }: Props = {}) {
 
         {/* LEFT — Logo */}
         <Link href="/">
-          <div className="flex flex-col items-center px-4 py-1">
-            <span className="font-black text-3xl tracking-tighter leading-none bg-black text-white px-2 py-1 rounded">
-              PIXELIZZ
-            </span>
-            <span className="text-[10px] tracking-[0.4em] font-bold mt-1 text-black">
-              BUSINESS OS
-            </span>
-          </div>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={siteName ?? "Pixelizz"}
+              className="h-12 w-auto object-contain px-4 py-1"
+            />
+          ) : (
+            <div className="flex flex-col items-center px-4 py-1">
+              <span className="font-black text-3xl tracking-tighter leading-none bg-black text-white px-2 py-1 rounded">
+                PIXELIZZ
+              </span>
+              <span className="text-[10px] tracking-[0.4em] font-bold mt-1 text-black">
+                BUSINESS OS
+              </span>
+            </div>
+          )}
         </Link>
 
         {/* CENTER — Search (desktop only) */}

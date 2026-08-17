@@ -77,6 +77,7 @@ interface FooterData {
 }
 
 interface HomeData {
+  site?: { name?: string | null; logo?: string | null };
   navigation?: { links: NavLink[] };
   footer?: FooterData;
   social_links?: SocialLink[];
@@ -161,7 +162,7 @@ export default function HomeClient() {
 
   return (
     <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-      <Nav navLinks={data.navigation?.links ?? []} />
+      <Nav navLinks={data.navigation?.links ?? []} logoUrl={data.site?.logo ?? null} siteName={data.site?.name ?? null} />
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
         {heroSection && <HeroSliderSection section={heroSection} />}
         <Categories categories={data.featured_categories ?? []} />
