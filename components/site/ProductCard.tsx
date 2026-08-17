@@ -6,32 +6,32 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { ColorSelector } from "@/components/site/ColorSelector";
+import type { ProductCardColorOption } from "@/lib/types/product";
 
 interface ProductCardProps {
-  id: number;
-  name: string;
-  slug: string;
-  price: number;
-  compare_price?: number;
-  thumbnail?: string | null;
-  product_type?: string;
-  variantId?: number;
-  sku?: string;
+  title: string;
+  /**
+   * One entry = "individual" mode (the current color IS the card) or a
+   * single legacy/non-fashion item. Multiple entries = "grouped" mode —
+   * a color selector appears and switches the displayed color IN PLACE
+   * (no navigation — every color's data is already here, unlike the PDP
+   * where color switching is cross-page because each slug only carries
+   * one color).
+   */
+  colors: ProductCardColorOption[];
 }
 
-export function ProductCard({
-  id,
-  name,
-  slug,
-  price,
-  compare_price,
-  thumbnail,
-  variantId,
-  sku,
-}: ProductCardProps) {
+export function ProductCard({ title, colors }: ProductCardProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const [toastVisible, setToastVisible] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const current = colors[selectedIndex] ?? colors[0];
+  if (!current) return null;
+
+  const { productId, slug, color, thumbnail, price, comparePrice, discountPercentage, variantId, sku } = current;
 
   function showToast() {
     setToastVisible(true);
@@ -52,15 +52,15 @@ export function ProductCard({
     }
     addToCart({
       id: variantId,
-      productId: id,
+      productId,
       variantId,
-      name,
+      name: title,
       slug,
       sku: sku ?? "",
       price,
-      compare_price,
+      compare_price: comparePrice ?? undefined,
       thumbnail: thumbnail ?? undefined,
-      attributes: {},
+      attributes: color ? { Color: color.name } : {},
       quantity: 1,
     }, 1);
     showToast();
@@ -74,15 +74,15 @@ export function ProductCard({
     }
     addToCart({
       id: variantId,
-      productId: id,
+      productId,
       variantId,
-      name,
+      name: title,
       slug,
       sku: sku ?? "",
       price,
-      compare_price,
+      compare_price: comparePrice ?? undefined,
       thumbnail: thumbnail ?? undefined,
-      attributes: {},
+      attributes: color ? { Color: color.name } : {},
       quantity: 1,
     }, 1);
     router.push("/checkout");
@@ -112,11 +112,16 @@ export function ProductCard({
         href={`/products/${slug}`}
         className="relative aspect-[4/5] overflow-hidden bg-gray-50 block"
       >
+        {discountPercentage != null && discountPercentage > 0 && (
+          <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+            {discountPercentage}% OFF
+          </span>
+        )}
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumbnail}
-            alt={name}
+            alt={color ? `${title} — ${color.name}` : title}
             className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
           />
         ) : (
@@ -131,19 +136,27 @@ export function ProductCard({
           href={`/products/${slug}`}
           className="text-xs text-gray-600 line-clamp-2 leading-tight hover:text-black transition"
         >
-          {name}
+          {title}
         </Link>
 
         <div className="flex items-center gap-2">
-          {compare_price != null && compare_price > price && (
+          {comparePrice != null && comparePrice > price && (
             <span className="text-[11px] text-gray-300 line-through">
-              Tk {compare_price.toLocaleString()}
+              Tk {comparePrice.toLocaleString()}
             </span>
           )}
           <span className="font-bold text-gray-900 text-sm">
             Tk {price.toLocaleString()}
           </span>
         </div>
+
+        {colors.length > 1 && (
+          <ColorSelector
+            colors={colors.map((c) => c.color!).filter(Boolean)}
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
+          />
+        )}
 
         <div className="flex w-full gap-1 mt-1">
           <button

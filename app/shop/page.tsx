@@ -1,27 +1,26 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { ProductCard } from "@/components/site/ProductCard";
 import { Search, X, ChevronDown } from "lucide-react";
+import { toColorOption, legacyToColorOption, groupCardsByProduct, type GroupedProductCard } from "@/lib/product-adapters";
+import type { WebsiteProductCard, LegacyProductCard, ProductDisplayMode } from "@/lib/types/product";
 
-interface Product {
-  id: number;
-  name: string;
-  slug: string;
-  thumbnail?: string;
-  product_type: string;
-  category?: { name: string; slug: string };
-  brand?: { name: string; slug: string };
-  variants?: { id: number; sku: string; price: number; compare_price?: number }[];
-}
 interface Category { id: number; name: string; slug: string; }
 interface Brand { id: number; name: string; slug: string; }
 
 function ShopContent() {
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState<Product[]>([]);
+  // Browsing (no search term) hits /v1/products — the new WP4 per-color
+  // shape. Searching hits /v1/search, which still returns the OLDER
+  // style-level ProductCardResource shape (see WP6 report) — kept in a
+  // separate state so the two shapes are never accidentally mixed.
+  const [browseCards, setBrowseCards] = useState<WebsiteProductCard[]>([]);
+  const [searchResults, setSearchResults] = useState<LegacyProductCard[]>([]);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [displayMode, setDisplayMode] = useState<ProductDisplayMode>("individual");
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +40,15 @@ function ShopContent() {
       .then((r) => r.json())
       .then((d) => setBrands(d.data ?? []))
       .catch(() => setBrands([]));
+    // WP5 — the ONLY place product_display_mode is exposed is /v1/home's
+    // theme block; there's no lighter dedicated endpoint, so this fetch
+    // (and its otherwise-unused homepage payload) is a known, accepted
+    // overhead just to read one field. Falls back to "individual" (WP4's
+    // existing behavior) on any failure, matching the backend default.
+    fetch(`${BASE}/v1/home`, { headers: { Accept: "application/json" } })
+      .then((r) => r.json())
+      .then((d) => setDisplayMode(d?.data?.theme?.product_display_mode ?? "individual"))
+      .catch(() => setDisplayMode("individual"));
   }, []);
 
   useEffect(() => {
@@ -50,7 +58,9 @@ function ShopContent() {
     const params = new URLSearchParams();
 
     let url: string;
-    if (q) {
+    const searching = !!q;
+    setIsSearchMode(searching);
+    if (searching) {
       url = `${BASE}/v1/search?${new URLSearchParams({ q, ...(selectedCategory ? { category: selectedCategory } : {}), ...(selectedBrand ? { brand: selectedBrand } : {}) }).toString()}`;
     } else {
       if (selectedCategory) params.set("category", selectedCategory);
@@ -65,10 +75,12 @@ function ShopContent() {
         return r.json();
       })
       .then((d) => {
-        if (q) {
-          setProducts((d.data?.products as Product[]) ?? []);
+        if (searching) {
+          setSearchResults((d.data?.products as LegacyProductCard[]) ?? []);
+          setBrowseCards([]);
         } else {
-          setProducts((d.data as Product[]) ?? []);
+          setBrowseCards((d.data as WebsiteProductCard[]) ?? []);
+          setSearchResults([]);
         }
         setLoading(false);
       })
@@ -77,6 +89,29 @@ function ShopContent() {
         setLoading(false);
       });
   }, [search, selectedCategory, selectedBrand, sortBy]);
+
+  // Unifies both API shapes + both display modes into one render-ready
+  // list. Search results never group (no color concept in that older
+  // shape); browse results group by product_id only when "grouped" mode
+  // is active — "individual" renders the flat WP4 listing as-is (one
+  // card per published color), matching backend WP4's default exactly.
+  const renderCards: GroupedProductCard[] = useMemo(() => {
+    if (isSearchMode) {
+      return searchResults.map((item) => ({
+        productId: item.id,
+        title: item.name,
+        colors: [legacyToColorOption(item)],
+      }));
+    }
+    if (displayMode === "grouped") {
+      return groupCardsByProduct(browseCards);
+    }
+    return browseCards.map((card) => ({
+      productId: card.id,
+      title: card.title,
+      colors: [toColorOption(card)],
+    }));
+  }, [isSearchMode, searchResults, browseCards, displayMode]);
 
   const clearFilters = () => { setSearch(""); setSelectedCategory(""); setSelectedBrand(""); setSortBy("newest"); };
   const hasFilters = search || selectedCategory || selectedBrand;
@@ -89,7 +124,7 @@ function ShopContent() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-10 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight">Shop</h1>
-            <p className="text-xs text-gray-400 mt-1">{loading ? "Loading…" : `${products.length} products found`}</p>
+            <p className="text-xs text-gray-400 mt-1">{loading ? "Loading…" : `${renderCards.length} products found`}</p>
           </div>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
             className="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-black bg-white">
@@ -238,21 +273,15 @@ function ShopContent() {
                   <p className="text-gray-400 text-sm mb-4">Failed to load products.</p>
                   <button onClick={() => window.location.reload()} className="px-4 py-2 bg-black text-white text-sm font-bold rounded">Retry</button>
                 </div>
-              ) : products.length === 0 ? (
+              ) : renderCards.length === 0 ? (
                 <div className="text-center py-20">
                   <p className="text-gray-400 text-sm">No products found.</p>
                   <button onClick={clearFilters} className="mt-4 text-xs font-bold underline">Clear filters</button>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[10px]">
-                  {products.map((p) => (
-                    <ProductCard key={p.id} id={p.id} name={p.name} slug={p.slug}
-                      thumbnail={p.thumbnail}
-                      price={p.variants?.[0]?.price ?? 0}
-                      compare_price={p.variants?.[0]?.compare_price}
-                      variantId={p.variants?.[0]?.id}
-                      sku={p.variants?.[0]?.sku}
-                      product_type={p.product_type} />
+                  {renderCards.map((g) => (
+                    <ProductCard key={g.productId} title={g.title} colors={g.colors} />
                   ))}
                 </div>
               )}
