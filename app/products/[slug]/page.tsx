@@ -4,6 +4,7 @@ import { getProduct } from "@/lib/api";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { ProductDetailClient } from "@/components/site/ProductDetailClient";
+import { buildSeoMetadata } from "@/lib/seo-metadata";
 import type { WebsiteProductDetail } from "@/lib/types/product";
 
 /**
@@ -40,20 +41,13 @@ export async function generateMetadata({
   const product = await fetchProduct(slug);
   if (!product) return {};
 
-  const seo = product.seo;
-  const title = seo?.meta_title ?? product.title;
-  const description = seo?.meta_description ?? product.short_description ?? undefined;
-  const ogImage = seo?.og_image ?? product.featured_image ?? undefined;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title: title ?? undefined,
-      description,
-      images: ogImage ? [{ url: ogImage }] : undefined,
-    },
-  };
+  return buildSeoMetadata({
+    seo: product.seo,
+    fallbackTitle: product.title,
+    fallbackDescription: product.short_description,
+    fallbackImage: product.featured_image,
+    rawOgType: "product",
+  });
 }
 
 export default async function ProductDetailPage({

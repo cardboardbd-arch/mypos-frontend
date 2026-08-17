@@ -52,7 +52,7 @@ export default function CategoriesPage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {cats.map((c) => (
-                <Link key={c.id} href={`/shop?category=${c.slug}`}
+                <Link key={c.id} href={`/category/${c.slug}`}
                   className="group relative aspect-square overflow-hidden rounded-2xl bg-gray-100 shadow-sm hover:shadow-lg transition">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.image ?? FALLBACK_IMAGES[c.slug] ?? "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80"}

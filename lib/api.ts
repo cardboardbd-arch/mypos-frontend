@@ -41,6 +41,14 @@ export async function getCategories() {
   return res.json();
 }
 
+export async function getCategory(slug: string) {
+  const res = await fetch(`${BASE}/v1/categories/${encodeURIComponent(slug)}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function getBrands() {
   const res = await fetch(`${BASE}/v1/brands`, {
     headers: { Accept: "application/json" },
@@ -49,8 +57,32 @@ export async function getBrands() {
   return res.json();
 }
 
+export async function getBrand(slug: string) {
+  const res = await fetch(`${BASE}/v1/brands/${encodeURIComponent(slug)}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function getCollections() {
   const res = await fetch(`${BASE}/v1/collections`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getCollection(slug: string) {
+  const res = await fetch(`${BASE}/v1/collections/${encodeURIComponent(slug)}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getCollectionProducts(slug: string) {
+  const res = await fetch(`${BASE}/v1/collections/${encodeURIComponent(slug)}/products`, {
     headers: { Accept: "application/json" },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

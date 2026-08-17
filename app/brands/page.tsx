@@ -44,7 +44,7 @@ export default function BrandsPage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {brands.map((b) => (
-                <Link key={b.id} href={`/shop?brand=${b.slug}`}
+                <Link key={b.id} href={`/brand/${b.slug}`}
                   className="bg-white rounded-2xl shadow-sm p-8 flex flex-col items-center justify-center text-center hover:shadow-md transition group">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-black transition">
                     <span className="text-2xl font-black group-hover:text-white transition">{b.name.charAt(0)}</span>

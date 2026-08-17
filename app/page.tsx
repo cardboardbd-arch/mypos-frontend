@@ -1,173 +1,95 @@
-"use client";
+import type { Metadata } from "next";
+import HomeClient from "@/components/site/HomeClient";
 
-import { useEffect, useState } from "react";
-import { Nav } from "@/components/site/Nav";
-import { Footer } from "@/components/site/Footer";
-import { Categories } from "@/components/site/Categories";
-import { CategoryBanner } from "@/components/site/CategoryBanner";
-import { DesignerGrid } from "@/components/site/DesignerGrid";
-import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
-import { HeroSliderSection } from "@/components/site/sections/HeroSliderSection";
-import type { RawHomepageSection } from "@/components/site/sections/types";
-import { BigDealsBanner } from "@/components/site/BigDealsBanner";
-import { FindUs } from "@/components/site/FindUs";
+/**
+ * Phase 10.4P — homepage SEO.
+ *
+ * The SeoSettings admin form's "Homepage SEO" fields (homepage_meta_title/
+ * homepage_meta_description/homepage_og_image) are NOT exposed by any
+ * public API (confirmed: grep across app/routes/resources finds them only
+ * inside SeoSettings.php itself). Per this phase's hard-stop rule, those
+ * specific fields are NOT consumed here, and no backend change was made to
+ * expose them.
+ *
+ * However, /v1/home already returns its own, separate, already-public top-
+ * level `seo` object (HomepageService::seo() — sourced from the
+ * seo_title/seo_description/canonical_url/og_image/robots settings, or a
+ * SeoMeta row on StoreSetting id=1; live-verified: GET /v1/home ->
+ * data.seo = {title, description, canonical, og_image, robots}). That IS
+ * an existing public API path providing real homepage SEO data, so it's
+ * consumed here instead of leaving the homepage unimplemented.
+ */
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-interface ProductCard {
-  id: number;
-  name: string;
-  slug: string;
-  thumbnail: string | null;
-  product_type: string;
-  category?: { name: string; slug: string };
-  brand?: { name: string; slug: string };
-  variants?: Array<{
-    id: number;
-    sku: string;
-    price: number;
-    compare_price?: number;
-    stock_quantity: number;
-    attributes?: Record<string, string>;
-  }>;
+// Without this, Next statically prerenders "/" at build time (it has no
+// [slug] segment forcing dynamic rendering the way the other four SEO
+// pages get automatically) and freezes generateMetadata()'s fetch result
+// into that build — admin SEO edits wouldn't show up until the next
+// deploy. This restores the same per-request behavior every other SEO
+// page already has; it disables caching, it doesn't add any.
+export const dynamic = "force-dynamic";
+
+interface HomeSeo {
+  title: string | null;
+  description: string | null;
+  canonical: string | null;
+  og_image: string | null;
+  robots: string | null;
 }
 
-interface CategoryItem {
-  id: number;
-  name: string;
-  slug: string;
-  image: string | null;
-}
-
-interface Banner {
-  label: string;
-  slug: string;
-  image: string;
-  link: string;
-}
-
-interface PromoBanner {
-  is_active: boolean;
-  heading: string;
-  subheading: string;
-  button_text: string;
-  button_link: string;
-  bg_color: string;
-}
-
-interface Store {
-  name: string;
-  area: string;
-  address: string;
-  phone: string;
-  map_link?: string | null;
-}
-
-interface NavLink { label: string; href: string; }
-interface FooterLink { label: string; href: string; }
-interface Feature { label: string; icon?: string; }
-interface SocialLink { platform: string; url: string; is_active?: boolean; }
-
-interface FooterData {
-  brand_name?: string;
-  brand_tagline?: string;
-  brand_description?: string;
-  copyright_text?: string;
-  quick_links?: FooterLink[];
-  customer_links?: FooterLink[];
-  feature_bar?: Feature[];
-}
-
-interface HomeData {
-  navigation?: { links: NavLink[] };
-  footer?: FooterData;
-  social_links?: SocialLink[];
-  featured_categories: CategoryItem[];
-  new_arrivals: ProductCard[];
-  featured_products: ProductCard[];
-  banners: Banner[];
-  homepage_sections: RawHomepageSection[];
-  promo_banner: PromoBanner | null;
-  popup: any;
-  store_locations: Store[];
-  [key: string]: any;
-}
-
-export default function Home() {
-  const [data, setData] = useState<HomeData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
+async function fetchHomeSeo(): Promise<HomeSeo | null> {
+  try {
+    // /v1/home's payload is the full homepage feed (sections, categories,
+    // products, theme, ...) — HomeClient fetches it again client-side for
+    // the page body. This second, server-side fetch of the same endpoint
+    // just for the small top-level `seo` object is the same "known,
+    // accepted overhead for one field" pattern already used elsewhere in
+    // this codebase (app/shop/page.tsx fetches /v1/home solely to read
+    // theme.product_display_mode) — there's no lighter existing endpoint
+    // that returns only the seo block.
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
       headers: { Accept: "application/json" },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((res) => {
-        setData(res.data as HomeData);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError(true);
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return (
-      <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-        <Nav />
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-pulse text-gray-400 text-sm">
-            Loading homepage…
-          </div>
-        </div>
-        <Footer />
-      </main>
-    );
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (json?.data?.seo as HomeSeo) ?? null;
+  } catch {
+    return null;
   }
+}
 
-  if (error || !data) {
-    return (
-      <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-        <Nav />
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-500 text-sm mb-4">
-              Unable to load homepage.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-black text-white text-sm font-bold rounded"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </main>
-    );
-  }
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await fetchHomeSeo();
 
-  const heroSection = data.homepage_sections?.find((s) => s.type === "hero_slider");
+  const title = seo?.title ?? undefined;
+  const description = seo?.description ?? undefined;
+  const image = seo?.og_image ?? undefined;
+  // The homepage canonical is always the frontend root — not whatever
+  // (possibly unset) canonical_url HomepageService returns, and never the
+  // Laravel app.url domain.
+  const canonical = `${SITE_URL}/`;
 
-  return (
-    <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-      <Nav navLinks={data.navigation?.links ?? []} />
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
-        {heroSection && <HeroSliderSection section={heroSection} />}
-        <Categories categories={data.featured_categories ?? []} />
-        <CategoryBanner banners={data.banners ?? []} />
-        <DesignerGrid
-          sections={data.homepage_sections ?? []}
-          products={data.featured_products ?? []}
-        />
-        <CmsHomepageSections sections={data.homepage_sections ?? []} />
-        <BigDealsBanner data={data.promo_banner ?? data.popup ?? null} />
-        <FindUs stores={data.store_locations ?? []} />
-      </div>
-      <Footer footer={data.footer} socialLinks={data.social_links} />
-    </main>
-  );
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: seo?.robots ?? undefined,
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      images: image ? [{ url: image }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
+export default function HomePage() {
+  return <HomeClient />;
 }
