@@ -163,7 +163,7 @@ export default function HomeClient() {
   return (
     <main className="bg-white text-gray-900 w-full overflow-x-hidden">
       <Nav navLinks={data.navigation?.links ?? []} logoUrl={data.site?.logo ?? null} siteName={data.site?.name ?? null} />
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 py-8">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 pt-2 pb-8">
         {heroSection && <HeroSliderSection section={heroSection} />}
         <Categories categories={data.featured_categories ?? []} />
         <CategoryBanner banners={data.banners ?? []} />
