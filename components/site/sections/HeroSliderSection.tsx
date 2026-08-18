@@ -96,10 +96,8 @@ export function HeroSliderSection({ section }: Props) {
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute inset-0 bg-black/40" />
-
       {/* Content stays readable on ultra-wide screens even though the section
-          itself is full-bleed — background image/overlay span the viewport,
+          itself is full-bleed — background image spans the viewport,
           text/CTA are capped at the site's normal content width. */}
       <div className="relative h-full max-w-[1400px] mx-auto flex flex-col items-center justify-center px-6 lg:px-10 text-center">
         {slide.badge_text && (
