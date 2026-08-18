@@ -3,14 +3,9 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { Categories } from "@/components/site/Categories";
-import { CategoryBanner } from "@/components/site/CategoryBanner";
-import { DesignerGrid } from "@/components/site/DesignerGrid";
 import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
 import { HeroSliderSection } from "@/components/site/sections/HeroSliderSection";
 import type { RawHomepageSection } from "@/components/site/sections/types";
-import { BigDealsBanner } from "@/components/site/BigDealsBanner";
-import { FindUs } from "@/components/site/FindUs";
 
 interface ProductCard {
   id: number;
@@ -163,19 +158,11 @@ export default function HomeClient() {
   return (
     <main className="bg-white text-gray-900 w-full overflow-x-hidden">
       <Nav navLinks={data.navigation?.links ?? []} logoUrl={data.site?.logo ?? null} siteName={data.site?.name ?? null} />
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-10 space-y-2 pt-2 pb-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 space-y-6 pt-2 pb-12">
         {heroSection && <HeroSliderSection section={heroSection} />}
-        <Categories categories={data.featured_categories ?? []} />
-        <CategoryBanner banners={data.banners ?? []} />
-        <DesignerGrid
-          sections={data.homepage_sections ?? []}
-          products={data.featured_products ?? []}
-        />
         <CmsHomepageSections sections={data.homepage_sections ?? []} />
-        <BigDealsBanner data={data.promo_banner ?? data.popup ?? null} />
-        <FindUs stores={data.store_locations ?? []} />
       </div>
-      <Footer footer={data.footer} socialLinks={data.social_links} />
+      <Footer footer={data.footer} socialLinks={data.social_links} showFeatureBar={false} />
     </main>
   );
 }

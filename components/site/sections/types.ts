@@ -78,18 +78,35 @@ export interface SectionShowcaseItem {
   image: string | null;
 }
 
+export interface SectionTrustItem {
+  icon: string;
+  title: string;
+  subtitle?: string | null;
+}
+
+export interface SectionOutletItem {
+  id?: number;
+  name: string;
+  area?: string;
+  address?: string;
+  phone?: string;
+  shopping_hours?: string;
+  map_link?: string | null;
+}
+
 export interface RawHomepageSection {
   id: number;
   type: string;
   title: string;
   subtitle: string | null;
   image: string | null;
+  button_text?: string | null;
   view_all_link: string | null;
   category_slug: string;
   config: Record<string, any> | any[];
   products?: SectionProduct[];
   product_count?: number;
-  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem | SectionShowcaseItem>;
+  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem | SectionShowcaseItem | SectionTrustItem | SectionOutletItem>;
   item_count?: number;
   content?: Record<string, any>;
   flash_sale?: { ends_at: string; items: unknown[] } | null;

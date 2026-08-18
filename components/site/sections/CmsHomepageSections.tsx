@@ -14,15 +14,10 @@ import { AboutSection } from "./AboutSection";
 import { BlogTeaserSection } from "./BlogTeaserSection";
 import { NewsletterSection } from "./NewsletterSection";
 import { SeoContentSection } from "./SeoContentSection";
+import { DesignerGridSection } from "./DesignerGridSection";
+import { TrustBarSection } from "./TrustBarSection";
+import { FindUsSection } from "./FindUsSection";
 
-// "designer_grid" is rendered separately by <DesignerGrid> (its own batched
-// banner-tile + shared-product-pool layout), and "hero_slider" is rendered
-// explicitly at the top of the page (replacing the old static Hero banner —
-// a hero belongs above the fold regardless of its sort_order among the other
-// sections). Every other CMS section type that this theme knows how to
-// render is registered here. Anything not in this map (a type added in the
-// CMS with no matching component yet) is skipped silently rather than
-// showing an empty row.
 const COMPONENTS: Record<string, ComponentType<{ section: RawHomepageSection }>> = {
   announcement_bar: AnnouncementBarSection,
   featured_products: ProductCarouselSection,
@@ -38,6 +33,9 @@ const COMPONENTS: Record<string, ComponentType<{ section: RawHomepageSection }>>
   flash_sale: FlashSaleSection,
   featured_collections: CollectionGridSection,
   featured_brands: BrandGridSection,
+  designer_grid: DesignerGridSection,
+  trust_bar: TrustBarSection,
+  find_us: FindUsSection,
   about: AboutSection,
   blog: BlogTeaserSection,
   newsletter: NewsletterSection,
@@ -50,13 +48,13 @@ interface Props {
 
 export function CmsHomepageSections({ sections = [] }: Props) {
   const renderable = sections.filter(
-    (s) => s.type !== "designer_grid" && s.type !== "hero_slider" && COMPONENTS[s.type]
+    (s) => s.type !== "hero_slider" && COMPONENTS[s.type]
   );
 
   if (renderable.length === 0) return null;
 
   return (
-    <div className="w-full flex flex-col gap-10">
+    <div className="w-full flex flex-col gap-8">
       {renderable.map((section) => {
         const Component = COMPONENTS[section.type];
         return <Component key={section.id} section={section} />;

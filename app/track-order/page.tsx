@@ -4,59 +4,49 @@ import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { Search, Package, CheckCircle, Clock, Truck, XCircle, RotateCcw } from "lucide-react";
 
-interface OrderTimeline {
-  placed_at: string | null;
-  confirmed_at: string | null;
-  processing_at: string | null;
-  packed_at: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
-  cancelled_at: string | null;
+interface TimelineStep {
+  status: string;
+  label: string;
+  completed: boolean;
+  timestamp: string | null;
 }
 
-interface OrderCourier {
-  name: string | null;
-  tracking_number: string | null;
-  status: string | null;
+interface TrackedOrderItem {
+  title: string;
+  quantity: number;
+  thumbnail: string | null;
 }
 
 interface TrackedOrder {
   order_number: string;
   status: string;
-  stage: string;
-  total: number;
-  payment_method: string;
-  payment_status: string;
+  status_label: string;
   created_at: string;
-  timeline?: OrderTimeline;
-  courier?: OrderCourier | null;
-  estimated_delivery?: string | null;
+  items: TrackedOrderItem[];
+  timeline: TimelineStep[];
 }
 
-const PIPELINE_STEPS = [
-  { stage: "placed", label: "Order Placed", icon: Package, timeKey: "placed_at" as const },
-  { stage: "confirmed", label: "Confirmed", icon: CheckCircle, timeKey: "confirmed_at" as const },
-  { stage: "processing", label: "Processing", icon: Clock, timeKey: "processing_at" as const },
-  { stage: "packed", label: "Packed", icon: Clock, timeKey: "packed_at" as const },
-  { stage: "courier", label: "With Courier", icon: Truck, timeKey: "shipped_at" as const },
-  { stage: "delivered", label: "Delivered", icon: CheckCircle, timeKey: "delivered_at" as const },
-];
+// Off-path terminal statuses render as a distinct "stopped here" message
+// instead of pretending the order is still progressing through steps it
+// will never reach — the icon shown depends on which bucket the status
+// falls into.
+const OFF_PATH_STATUSES = new Set([
+  "cancelled", "returned", "refunded", "rejected",
+  "failed_delivery", "return_requested", "return_approved",
+]);
 
-// Stage order used to decide which steps are "done" — everything up to and
-// including the order's current stage.
-const STAGE_ORDER = ["placed", "confirmed", "processing", "packed", "courier", "delivered"];
+const RETURN_LIKE_STATUSES = new Set(["returned", "return_requested", "return_approved"]);
 
-const OFF_PATH_LABELS: Record<string, string> = {
-  cancelled: "This order was cancelled.",
-  returned: "This order was returned.",
-  refunded: "This order was refunded.",
-  rejected: "This order was rejected.",
-  failed_delivery: "The last delivery attempt failed. Our courier will retry, or contact support.",
-  return_requested: "A return has been requested for this order.",
-  return_approved: "The return for this order has been approved.",
+const STEP_ICONS: Record<string, typeof Package> = {
+  placed: Package,
+  confirmed: CheckCircle,
+  processing: Clock,
+  packed: Clock,
+  courier: Truck,
+  delivered: CheckCircle,
 };
 
-function formatDate(value: string | null | undefined): string {
+function formatDate(value: string | null): string {
   if (!value) return "";
   return new Date(value).toLocaleString("en-US", {
     year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
@@ -78,18 +68,22 @@ export default function TrackOrderPage() {
     setOrder(null);
 
     try {
-      const params = new URLSearchParams({ phone: phone.trim() });
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/orders/${encodeURIComponent(orderNumber.trim())}?${params}`, {
-        headers: { Accept: "application/json" },
+      // Phase 10.6A — order_number + phone travel in the POST body, not the
+      // URL query string, so neither is exposed via browser history, server
+      // access logs, or a shared/bookmarked link.
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/orders/track`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ order_number: orderNumber.trim(), phone: phone.trim() }),
       });
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.message ?? "Order not found. Check your order number and phone number.");
+      if (!res.ok || !data.success) {
+        setError(data.message ?? "We couldn't find an order with those details. Please check your order number and phone number.");
         return;
       }
 
-      setOrder(data);
+      setOrder(data.data);
     } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {
@@ -97,8 +91,8 @@ export default function TrackOrderPage() {
     }
   }
 
-  const offPathMessage = order && OFF_PATH_LABELS[order.stage];
-  const currentStageIndex = order ? STAGE_ORDER.indexOf(order.stage) : -1;
+  const isOffPath = order ? OFF_PATH_STATUSES.has(order.status) : false;
+  const finalStep = order?.timeline[order.timeline.length - 1];
 
   return (
     <>
@@ -130,35 +124,33 @@ export default function TrackOrderPage() {
           {order && (
             <div className="bg-white rounded-2xl shadow-sm p-8">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-sm font-black uppercase tracking-wider">Order #{order.order_number} — Status</h2>
-                <span className="text-xs font-bold text-gray-500">Tk {Number(order.total).toLocaleString()}</span>
+                <h2 className="text-sm font-black uppercase tracking-wider">Order #{order.order_number} — {order.status_label}</h2>
               </div>
 
-              {offPathMessage ? (
+              {isOffPath && finalStep ? (
                 <div className="flex items-start gap-4 rounded-xl bg-gray-50 p-5">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gray-900">
-                    {order.stage === "returned" || order.stage === "return_requested" || order.stage === "return_approved"
+                    {RETURN_LIKE_STATUSES.has(order.status)
                       ? <RotateCcw className="h-5 w-5 text-white" />
                       : <XCircle className="h-5 w-5 text-white" />}
                   </div>
                   <div className="flex-1 pt-1.5">
-                    <p className="text-sm font-black text-black">{offPathMessage}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Current status: {order.status.replace(/_/g, " ")}</p>
+                    <p className="text-sm font-black text-black">{finalStep.label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{formatDate(finalStep.timestamp)}</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {PIPELINE_STEPS.map((step, i) => {
-                    const done = currentStageIndex >= i;
-                    const time = order.timeline?.[step.timeKey];
+                  {order.timeline.map(step => {
+                    const Icon = STEP_ICONS[step.status] ?? Package;
                     return (
-                      <div key={step.stage} className="flex items-start gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${done ? "bg-black" : "bg-gray-100"}`}>
-                          <step.icon className={`h-5 w-5 ${done ? "text-white" : "text-gray-400"}`} />
+                      <div key={step.status} className="flex items-start gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${step.completed ? "bg-black" : "bg-gray-100"}`}>
+                          <Icon className={`h-5 w-5 ${step.completed ? "text-white" : "text-gray-400"}`} />
                         </div>
                         <div className="flex-1 pt-1.5">
-                          <p className={`text-sm font-black ${done ? "text-black" : "text-gray-400"}`}>{step.label}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{time ? formatDate(time) : done ? "" : "Pending"}</p>
+                          <p className={`text-sm font-black ${step.completed ? "text-black" : "text-gray-400"}`}>{step.label}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{step.timestamp ? formatDate(step.timestamp) : step.completed ? "" : "Pending"}</p>
                         </div>
                       </div>
                     );
@@ -166,13 +158,23 @@ export default function TrackOrderPage() {
                 </div>
               )}
 
-              {order.courier?.tracking_number && (
-                <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-4">
-                  <Truck className="h-8 w-8 text-gray-300 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Courier</p>
-                    <p className="text-sm font-black text-black">{order.courier.name ?? "Courier"} — {order.courier.tracking_number}</p>
-                  </div>
+              {order.items.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Items</p>
+                  {order.items.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      {item.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-black">{item.title}</p>
+                        <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

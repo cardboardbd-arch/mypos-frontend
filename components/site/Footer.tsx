@@ -33,6 +33,7 @@ interface Props {
   /** From /v1/home — omit to have Footer self-fetch it. */
   footer?: FooterData;
   socialLinks?: SocialLink[];
+  showFeatureBar?: boolean;
 }
 
 const FB_FEATURES: Feature[] = [
@@ -70,7 +71,7 @@ const FB_BRAND: Brand = {
   copyright: "© 2026 Pixelizz. All rights reserved.",
 };
 
-export function Footer({ footer: footerProp, socialLinks: socialLinksProp }: Props = {}) {
+export function Footer({ footer: footerProp, socialLinks: socialLinksProp, showFeatureBar = true }: Props = {}) {
   const [features,      setFeatures]      = useState<Feature[]>(FB_FEATURES);
   const [quickLinks,    setQuickLinks]    = useState<FooterLink[]>(FB_QUICK_LINKS);
   const [customerLinks, setCustomerLinks] = useState<FooterLink[]>(FB_CUSTOMER_LINKS);
@@ -115,23 +116,25 @@ export function Footer({ footer: footerProp, socialLinks: socialLinksProp }: Pro
 
   return (
     <footer className="bg-black text-white mt-8">
-      <div className="bg-[#cc0000]">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-red-700">
-            {features.map((f) => (
-              <div
-                key={f.label}
-                className="flex items-center justify-center gap-2 py-3 px-4"
-              >
-                <span className="text-lg">{f.icon}</span>
-                <span className="text-xs font-bold tracking-widest text-white">
-                  {f.label}
-                </span>
-              </div>
-            ))}
+      {showFeatureBar && (
+        <div className="bg-[#cc0000]">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-red-700">
+              {features.map((f) => (
+                <div
+                  key={f.label}
+                  className="flex items-center justify-center gap-2 py-3 px-4"
+                >
+                  <span className="text-lg">{f.icon}</span>
+                  <span className="text-xs font-bold tracking-widest text-white">
+                    {f.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">

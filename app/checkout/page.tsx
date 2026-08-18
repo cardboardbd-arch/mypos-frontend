@@ -290,6 +290,7 @@ export default function CheckoutPage() {
         <p className="text-gray-400 text-xs mb-6">Save this ID to track your order.</p>
         <div className="flex gap-3 mt-2">
           <Link href="/" className="border border-gray-200 px-6 py-2.5 text-sm font-bold rounded hover:border-black transition">Home</Link>
+          <Link href="/track-order" className="border border-gray-200 px-6 py-2.5 text-sm font-bold rounded hover:border-black transition">Track Order</Link>
           <Link href="/shop" className="bg-black text-white px-6 py-2.5 text-sm font-bold rounded hover:bg-gray-800 transition">Continue Shopping</Link>
         </div>
       </div>
