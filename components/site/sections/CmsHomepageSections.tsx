@@ -15,6 +15,7 @@ import { BlogTeaserSection } from "./BlogTeaserSection";
 import { NewsletterSection } from "./NewsletterSection";
 import { SeoContentSection } from "./SeoContentSection";
 import { DesignerGridSection } from "./DesignerGridSection";
+import { CategoryBannerStripSection } from "./CategoryBannerStripSection";
 import { TrustBarSection } from "./TrustBarSection";
 import { FindUsSection } from "./FindUsSection";
 
@@ -34,6 +35,7 @@ const COMPONENTS: Record<string, ComponentType<{ section: RawHomepageSection }>>
   featured_collections: CollectionGridSection,
   featured_brands: BrandGridSection,
   designer_grid: DesignerGridSection,
+  category_banner: CategoryBannerStripSection,
   trust_bar: TrustBarSection,
   find_us: FindUsSection,
   about: AboutSection,

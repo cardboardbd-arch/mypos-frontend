@@ -84,6 +84,12 @@ export interface SectionTrustItem {
   subtitle?: string | null;
 }
 
+export interface SectionBannerItem {
+  image: string | null;
+  title?: string | null;
+  link?: string | null;
+}
+
 export interface SectionOutletItem {
   id?: number;
   name: string;
@@ -106,7 +112,7 @@ export interface RawHomepageSection {
   config: Record<string, any> | any[];
   products?: SectionProduct[];
   product_count?: number;
-  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem | SectionShowcaseItem | SectionTrustItem | SectionOutletItem>;
+  items?: Array<SectionCategoryItem | SectionCollectionItem | SectionBrandItem | SectionBlogItem | SectionShowcaseItem | SectionTrustItem | SectionOutletItem | SectionBannerItem>;
   item_count?: number;
   content?: Record<string, any>;
   flash_sale?: { ends_at: string; items: unknown[] } | null;
