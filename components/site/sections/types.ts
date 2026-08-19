@@ -5,7 +5,14 @@
 
 export interface SectionProduct {
   id: number;
-  name: string;
+  // CMS product sections (featured_products/new_arrival/best_seller/...)
+  // are populated via WebsiteProductCardResource (HomepageService::
+  // homepageSections()), which sends `title` + a separate `product_id` —
+  // not the older `name`-only ProductCardResource shape this interface
+  // used to assume. Both kept optional so either resource shape type-checks.
+  name?: string;
+  title?: string;
+  product_id?: number;
   slug: string;
   thumbnail: string | null;
   product_type: string;

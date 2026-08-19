@@ -84,7 +84,7 @@ export function DesignerGridSection({ section }: Props) {
               <div key={p.id ?? idx} className="relative">
                 <ProductCardSmall
                   id={p.id}
-                  name={p.name}
+                  name={p.title ?? p.name}
                   slug={p.slug}
                   thumbnail={thumb}
                   price={price}

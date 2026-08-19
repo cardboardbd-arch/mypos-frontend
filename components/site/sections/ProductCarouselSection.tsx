@@ -35,13 +35,20 @@ export function ProductCarouselSection({ section }: Props) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
-        {products.map((p) => (
-          // This section still sources from the OLD ProductCardResource
-          // shape (backend WP4/WP5 didn't touch CMS product sections) —
-          // legacyToColorOption() wraps it as a single, selector-less
-          // card entry so it renders exactly as before.
-          <ProductCard key={p.id} title={p.name} colors={[legacyToColorOption(p)]} />
-        ))}
+        {products.map((p) => {
+          // WebsiteProductCardResource (HomepageService::homepageSections())
+          // sends `title`, not the older ProductCardResource's `name` —
+          // legacyToColorOption() only needs a display name, so it's
+          // normalized here rather than widening that shared adapter.
+          const displayName = p.title ?? p.name ?? "";
+          return (
+            <ProductCard
+              key={p.id}
+              title={displayName}
+              colors={[legacyToColorOption({ ...p, name: displayName })]}
+            />
+          );
+        })}
       </div>
     </section>
   );
