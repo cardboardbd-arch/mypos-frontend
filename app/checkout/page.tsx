@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { ChevronRight, ShieldCheck, Truck, RotateCcw, Tag, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { ChevronRight, ShieldCheck, Truck, RotateCcw, Tag, ShoppingCart, CheckCircle2, MapPin } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { getAddresses, type CustomerAddress } from "@/lib/auth";
 
 export default function CheckoutPage() {
   const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart } = useCart();
@@ -12,6 +13,42 @@ export default function CheckoutPage() {
     name: "", phone: "", email: "",
     address: "", area: "", city: "Dhaka", notes: "",
   });
+
+  // Authenticated-customer saved-address selection — purely additive.
+  // Guests, and authenticated customers with no saved addresses, never see
+  // this and keep using the manual fields below exactly as before.
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | "manual" | null>(null);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    if (!token) return;
+    getAddresses(token)
+      .then((res) => {
+        const list = res.data ?? [];
+        setSavedAddresses(list);
+        const preferred = list.find((a) => a.is_default) ?? list[0];
+        if (preferred) selectSavedAddress(preferred);
+      })
+      .catch(() => {/* checkout must work even if the address book fails to load */});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function selectSavedAddress(addr: CustomerAddress) {
+    setSelectedAddressId(addr.id);
+    setForm((prev) => ({
+      ...prev,
+      name: addr.recipient_name,
+      phone: addr.phone,
+      address: addr.address,
+      area: addr.area ?? "",
+      city: addr.city ?? prev.city,
+    }));
+  }
+
+  function selectManualEntry() {
+    setSelectedAddressId("manual");
+  }
   const [deliveryType, setDeliveryType] = useState<"inside" | "outside">("inside");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bkash" | "nagad" | "card">("cod");
   const [coupon, setCoupon] = useState("");
@@ -158,6 +195,12 @@ export default function CheckoutPage() {
       address: form.address,
       area: form.area,
       city: form.city,
+      // Server is authoritative: it re-verifies address_id belongs to the
+      // authenticated customer and builds the shipping_address snapshot
+      // from the saved record itself, not from the fields above — those
+      // are still sent for display consistency but ignored server-side
+      // whenever address_id is present. See OrderController::store().
+      address_id: typeof selectedAddressId === "number" ? selectedAddressId : undefined,
       notes: form.notes,
       payment_method: paymentMethod,
       delivery_charge: deliveryCharge,
@@ -390,33 +433,84 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Address fields */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Full Address <span className="text-red-500">*</span></label>
-                    <textarea name="address" value={form.address} onChange={handleChange}
-                      placeholder="House no., Road, Block, Area..."
-                      rows={3}
-                      className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white resize-none ${validationErrors.address ? "border-red-300" : "border-gray-200"}`} />
-                    {validationErrors.address && <p className="text-red-500 text-xs mt-1">{validationErrors.address}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Saved-address selection (authenticated customers only) */}
+                  {savedAddresses.length > 0 && (
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Thana / Area</label>
-                      <input name="area" value={form.area} onChange={handleChange}
-                        placeholder="Mirpur, Dhanmondi..."
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">City / District</label>
-                      <select name="city" value={form.city} onChange={handleChange}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white">
-                        {["Dhaka","Chattogram","Sylhet","Rajshahi","Khulna","Barishal","Rangpur","Mymensingh","Comilla","Narayanganj","Gazipur"].map(c => (
-                          <option key={c} value={c}>{c}</option>
+                      <label className="block text-xs font-bold text-gray-500 mb-3 uppercase tracking-wide">Delivery Address</label>
+                      <div className="space-y-2">
+                        {savedAddresses.map((addr) => (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            onClick={() => selectSavedAddress(addr)}
+                            className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition ${
+                              selectedAddressId === addr.id ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-300 bg-white"
+                            }`}
+                          >
+                            <span className={`mt-0.5 h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedAddressId === addr.id ? "border-black" : "border-gray-300"}`}>
+                              {selectedAddressId === addr.id && <span className="h-2 w-2 rounded-full bg-black" />}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase flex items-center gap-2">
+                                {addr.label}
+                                {addr.is_default && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black text-white">DEFAULT</span>}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">{addr.recipient_name} · {addr.phone}</p>
+                              <p className="text-xs text-gray-400 truncate">{[addr.address, addr.area, addr.city].filter(Boolean).join(", ")}</p>
+                            </div>
+                          </button>
                         ))}
-                      </select>
+                        <button
+                          type="button"
+                          onClick={selectManualEntry}
+                          className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition ${
+                            selectedAddressId === "manual" ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-300 bg-white"
+                          }`}
+                        >
+                          <span className={`h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedAddressId === "manual" ? "border-black" : "border-gray-300"}`}>
+                            {selectedAddressId === "manual" && <span className="h-2 w-2 rounded-full bg-black" />}
+                          </span>
+                          <span className="text-xs font-black uppercase flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5" /> Enter a different address
+                          </span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Manual address fields — shown for guests, customers with
+                      no saved addresses, or when "Enter a different address"
+                      is chosen. */}
+                  {(savedAddresses.length === 0 || selectedAddressId === "manual") && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Full Address <span className="text-red-500">*</span></label>
+                        <textarea name="address" value={form.address} onChange={handleChange}
+                          placeholder="House no., Road, Block, Area..."
+                          rows={3}
+                          className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white resize-none ${validationErrors.address ? "border-red-300" : "border-gray-200"}`} />
+                        {validationErrors.address && <p className="text-red-500 text-xs mt-1">{validationErrors.address}</p>}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Thana / Area</label>
+                          <input name="area" value={form.area} onChange={handleChange}
+                            placeholder="Mirpur, Dhanmondi..."
+                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">City / District</label>
+                          <select name="city" value={form.city} onChange={handleChange}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white">
+                            {["Dhaka","Chattogram","Sylhet","Rajshahi","Khulna","Barishal","Rangpur","Mymensingh","Comilla","Narayanganj","Gazipur"].map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Order Notes <span className="text-gray-300">(Optional)</span></label>

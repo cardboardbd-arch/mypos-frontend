@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Search, Heart, ShoppingBag, User, Menu, X } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, Package, LogOut } from "lucide-react";
 import { useCart } from "@/lib/cart";
-import { getToken } from "@/lib/auth";
+import { getToken, logoutCustomer, removeToken } from "@/lib/auth";
 
 interface NavLink { label: string; href: string; }
 
@@ -32,6 +32,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [navLinks, setNavLinks] = useState<NavLink[]>(navLinksProp?.length ? navLinksProp : FALLBACK_NAV);
   // Admin-uploaded logo/site name (GeneralSettings). null/undefined means
   // "no logo configured" — the static PIXELIZZ wordmark stays as the
@@ -79,6 +80,15 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
     e.preventDefault();
     const q = searchQuery.trim();
     if (q) router.push(`/shop?q=${encodeURIComponent(q)}`);
+  }
+
+  async function handleLogout() {
+    const token = getToken();
+    if (token) await logoutCustomer(token).catch(() => {});
+    removeToken();
+    setIsLoggedIn(false);
+    setAccountMenuOpen(false);
+    router.push("/");
   }
 
   return (
@@ -146,13 +156,57 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
             )}
           </Link>
 
-          <Link
-            href={isLoggedIn ? "/profile" : "/login"}
-            className="p-2 rounded-full hover:bg-gray-50 transition-colors"
-            aria-label="Account"
-          >
-            <User className={`h-6 w-6 ${isLoggedIn ? "text-black" : "text-gray-700"}`} />
-          </Link>
+          {isLoggedIn ? (
+            <div
+              className="relative"
+              onMouseEnter={() => setAccountMenuOpen(true)}
+              onMouseLeave={() => setAccountMenuOpen(false)}
+            >
+              <button
+                onClick={() => setAccountMenuOpen((v) => !v)}
+                className="p-2 rounded-full hover:bg-gray-50 transition-colors"
+                aria-label="Account menu"
+                aria-expanded={accountMenuOpen}
+              >
+                <User className="h-6 w-6 text-black" />
+              </button>
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-full w-48 bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50">
+                  <Link
+                    href="/profile"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <User className="h-4 w-4" />
+                    My Account
+                  </Link>
+                  <Link
+                    href="/profile?tab=orders"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Package className="h-4 w-4" />
+                    Orders
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="p-2 rounded-full hover:bg-gray-50 transition-colors"
+              aria-label="Login"
+            >
+              <User className="h-6 w-6 text-gray-700" />
+            </Link>
+          )}
 
           {/* Mobile menu toggle */}
           <button
