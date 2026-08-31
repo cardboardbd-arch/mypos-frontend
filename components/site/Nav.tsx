@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Search, Heart, ShoppingBag, User, Menu, X, Package, LogOut } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { getToken, logoutCustomer, removeToken } from "@/lib/auth";
+import { resolveMediaUrl } from "@/lib/resolveMediaUrl";
 
 interface NavLink { label: string; href: string; }
 
@@ -53,7 +54,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
         setNavLinks(navLinksProp);
       }
       if (logoUrlProp !== undefined) {
-        setLogoUrl(logoUrlProp);
+        setLogoUrl(resolveMediaUrl(logoUrlProp));
       }
       if (siteNameProp !== undefined) {
         setSiteName(siteNameProp);
@@ -70,7 +71,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
       .then((res) => {
         const items = res.data?.navigation?.links;
         if (items?.length) setNavLinks(items);
-        if (res.data?.site?.logo) setLogoUrl(res.data.site.logo);
+        if (res.data?.site?.logo) setLogoUrl(resolveMediaUrl(res.data.site.logo));
         if (res.data?.site?.name) setSiteName(res.data.site.name);
       })
       .catch(() => {/* keep fallback */});
