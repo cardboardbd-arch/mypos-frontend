@@ -2,26 +2,63 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Heart, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import {
+  ShoppingCart,
+  Heart,
+  ChevronRight,
+  Star,
+  Truck,
+  RefreshCcw,
+  ShieldCheck,
+  Lock,
+  Maximize2,
+  Award,
+  Headphones,
+  RulerIcon,
+} from "lucide-react";
 import { useCart } from "@/lib/cart";
-import { ColorSelector } from "@/components/site/ColorSelector";
-import { SizeSelector } from "@/components/site/SizeSelector";
-import type { ColorOption, VariantSummary, WebsiteProductDetail } from "@/lib/types/product";
+import type {
+  ColorOption,
+  VariantSummary,
+  WebsiteProductCard,
+  WebsiteProductDetail,
+} from "@/lib/types/product";
 
-/**
- * {attribute_name: value} for one variant, e.g. {Size: "M"}. "Color" is
- * deliberately excluded from this map's use in attribute grouping below
- * — every variant on this page already belongs to the SAME color (the
- * backend scopes `variants` to just this website_product's color), so a
- * Color entry here would be redundant with (and could conflict with) the
- * real color switcher, which is sibling_colors + cross-page navigation,
- * not a value picked from these variants.
- */
 function attrMap(variant: VariantSummary): Record<string, string> {
   const map: Record<string, string> = {};
   if (!Array.isArray(variant.attributes)) return map;
   for (const a of variant.attributes) map[a.attribute_name] = a.value;
   return map;
+}
+
+const TABS = [
+  "Description",
+  "Additional Information",
+  "Reviews",
+  "Shipping & Returns",
+] as const;
+type Tab = (typeof TABS)[number];
+
+function StarRow({ rating = 4.8, count = 128 }: { rating?: number; count?: number }) {
+  const full = Math.floor(rating);
+  return (
+    <div className="flex items-center gap-1.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`h-3.5 w-3.5 ${
+            s <= full ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"
+          }`}
+        />
+      ))}
+      <span className="text-amber-500 font-bold text-xs ml-0.5">{rating}</span>
+      <span className="text-gray-300 text-xs">|</span>
+      <span className="text-gray-400 text-xs">{count} Reviews</span>
+      <span className="text-gray-300 text-xs">|</span>
+      <span className="text-gray-400 text-xs">256 Sold</span>
+    </div>
+  );
 }
 
 interface ProductDetailClientProps {
@@ -33,20 +70,21 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
   const { addToCart } = useCart();
   const product = initialProduct;
 
-  const [selectedVariant, setSelectedVariant] = useState<VariantSummary | null>(product.variants?.[0] ?? null);
+  const [activeTab, setActiveTab] = useState<Tab>("Description");
+  const [selectedVariant, setSelectedVariant] = useState<VariantSummary | null>(
+    product.variants?.[0] ?? null
+  );
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(
     product.variants?.[0] ? attrMap(product.variants[0]) : {}
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    product.variants?.[0]?.image ?? product.featured_image ?? product.gallery?.[0]?.image ?? null
+    product.variants?.[0]?.image ??
+      product.gallery?.[0]?.image ??
+      product.featured_image ??
+      null
   );
   const [quantity, setQuantity] = useState(1);
 
-  // WP6 requirement #4: color is CROSS-PAGE navigation on the PDP — each
-  // slug only ever carries one color's variants, unlike a grouped
-  // listing card where every color's data is already present. The
-  // current color is included alongside sibling_colors so the selector
-  // shows the full set with the current one visibly selected.
   const colorEntries = useMemo(
     () => [
       { slug: product.slug, color: product.color },
@@ -57,7 +95,6 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
   const colorOptions: ColorOption[] = colorEntries
     .map((e) => e.color)
     .filter((c): c is ColorOption => c !== null);
-  const selectedColorIndex = 0; // product.slug (current page) is always first
 
   function handleSelectColor(index: number) {
     const target = colorEntries[index];
@@ -65,9 +102,6 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     router.push(`/products/${target.slug}`);
   }
 
-  // One row per non-Color attribute name across this color's variants
-  // (Size, Material, ...). WP6 requirement #5: local state only, no
-  // navigation — this resolves a different variant of the SAME color.
   const attributeGroups = useMemo(() => {
     const groups: Record<string, string[]> = {};
     for (const v of product.variants ?? []) {
@@ -93,7 +127,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       const vAttrs = attrMap(v);
       if (vAttrs[attributeName] !== value) return false;
       return Object.keys(selectedAttrs).every(
-        (otherName) => otherName === attributeName || otherName === "Color" || vAttrs[otherName] === selectedAttrs[otherName]
+        (k) => k === attributeName || k === "Color" || vAttrs[k] === selectedAttrs[k]
       );
     });
   }
@@ -110,19 +144,22 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
 
   function handleAddToCart() {
     if (!selectedVariant) return;
-    addToCart({
-      id: selectedVariant.id,
-      productId: product.product_id,
-      variantId: selectedVariant.id,
-      name: product.title,
-      slug: product.slug,
-      sku: selectedVariant.sku,
-      price: selectedVariant.price,
-      compare_price: selectedVariant.compare_price ?? undefined,
-      thumbnail: product.featured_image ?? undefined,
-      attributes: attrMap(selectedVariant),
-      quantity,
-    }, quantity);
+    addToCart(
+      {
+        id: selectedVariant.id,
+        productId: product.product_id,
+        variantId: selectedVariant.id,
+        name: product.title,
+        slug: product.slug,
+        sku: selectedVariant.sku,
+        price: selectedVariant.price,
+        compare_price: selectedVariant.compare_price ?? undefined,
+        thumbnail: product.featured_image ?? undefined,
+        attributes: attrMap(selectedVariant),
+        quantity,
+      },
+      quantity
+    );
   }
 
   function handleBuyNow() {
@@ -132,9 +169,12 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
 
   const price = selectedVariant?.price ?? product.price ?? 0;
   const comparePrice = selectedVariant?.compare_price ?? product.sale_price;
-  const discount = comparePrice && comparePrice > price
-    ? Math.round(((comparePrice - price) / comparePrice) * 100)
+  const hasDiscount = !!(comparePrice && comparePrice > price);
+  const discount = hasDiscount
+    ? Math.round(((comparePrice! - price) / comparePrice!) * 100)
     : null;
+  const savings = hasDiscount ? comparePrice! - price : null;
+  const currencySymbol = product.currency?.symbol ?? "?";
 
   const images = product.gallery?.length
     ? product.gallery.map((g) => g.image)
@@ -142,244 +182,462 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       ? [product.featured_image]
       : [];
 
+  const inStock = product.stock_status !== "out_of_stock";
+  const lowStock = product.stock_status === "low_stock";
+
+  const specifications = useMemo(() => {
+    if (product.specifications && typeof product.specifications === "object") {
+      return Object.entries(product.specifications as Record<string, string>);
+    }
+    return [];
+  }, [product.specifications]);
+
+  const highlights = useMemo(() => {
+    if (!product.highlights) return [];
+    return Array.isArray(product.highlights)
+      ? product.highlights.map((h) => (typeof h === "string" ? h : h.text))
+      : [];
+  }, [product.highlights]);
+
   return (
-    <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-8">
+    <div className="bg-white min-h-screen">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-5">
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-gray-400 mb-8">
-        {product.breadcrumbs.map((crumb, i) => (
-          <span key={i} className="flex items-center gap-2">
-            {i > 0 && <ChevronRight className="h-3 w-3" />}
-            {i === product.breadcrumbs.length - 1 ? (
-              <span className="text-gray-700 font-medium line-clamp-1">{crumb.label}</span>
-            ) : (
-              <button onClick={() => router.push(crumb.href)} className="hover:text-black transition">
-                {crumb.label}
-              </button>
-            )}
-          </span>
-        ))}
-      </nav>
+        {/* Breadcrumb */}
+        <nav className="flex items-center flex-wrap gap-1 text-xs text-gray-400 mb-5">
+          {product.breadcrumbs.map((crumb, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" />}
+              {i === product.breadcrumbs.length - 1 ? (
+                <span className="text-gray-600 font-medium">{crumb.label}</span>
+              ) : (
+                <button
+                  onClick={() => router.push(crumb.href)}
+                  className="hover:text-gray-700 transition"
+                >
+                  {crumb.label}
+                </button>
+              )}
+            </span>
+          ))}
+        </nav>
 
-      {/*
-        Main Grid — 53.5%/46.5% split via fr units (not raw percentages,
-        so gap is naturally subtracted from the track-sizing pass rather
-        than the columns overflowing it), matching a standard fashion PDP's
-        image-slightly-larger-than-details balance. Breakpoint is `md`
-        (768px) rather than `lg` (1024px) so tablet-width screens — plenty
-        of horizontal room — get the side-by-side layout too instead of a
-        single full-width stacked column; below `md`, image stacks above
-        details exactly as before.
-      */}
-      <div className="grid grid-cols-1 md:grid-cols-[1.15fr_1fr] gap-8 md:gap-10 lg:gap-12">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
-        {/* Left: Images */}
-        <div className="flex flex-col gap-3">
-          {/*
-            3:4 portrait (not 1:1 square) — the standard aspect for fashion
-            product photography (a person/garment shot), so a normal photo
-            fills the frame instead of being letterboxed or center-cropped
-            into a square. Width is bound by the grid column above (already
-            capped by the page's max-w-[1400px]), so height follows
-            proportionally — no separate max-height needed.
-          */}
-          <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-            {selectedImage ? (
-              <img
-                src={selectedImage}
-                alt={product.title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-gray-300">
-                <ShoppingCart className="h-12 w-12" />
-                <span className="text-xs font-medium text-gray-400">No image available</span>
+          {/* LEFT: Images */}
+          <div className="flex gap-3">
+            {images.length > 0 && (
+              <div className="flex flex-col gap-2 w-[68px] shrink-0">
+                {images.slice(0, 5).map((img, i) => {
+                  const isLast = i === 4 && images.length > 5;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedImage(img)}
+                      className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                        selectedImage === img
+                          ? "border-gray-900 shadow-sm"
+                          : "border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      <img src={img} alt="" className="h-full w-full object-cover" />
+                      {isLast && (
+                        <div className="absolute inset-0 bg-black/55 flex items-center justify-center rounded-lg">
+                          <span className="text-white text-xs font-bold">+{images.length - 5}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
+            <div className="relative flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50">
+              {discount && (
+                <div className="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
+                  -{discount}%
+                </div>
+              )}
+              {selectedImage ? (
+                <img src={selectedImage} alt={product.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-gray-200">
+                  <ShoppingCart className="h-14 w-14" />
+                  <span className="text-sm text-gray-300">No image</span>
+                </div>
+              )}
+              <button className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white transition shadow-sm">
+                <Maximize2 className="h-3.5 w-3.5" /> View Fullscreen
+              </button>
+            </div>
           </div>
 
-          {/* Thumbnail gallery */}
-          {images.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {images.map((img, i) => (
+          {/* RIGHT: Info */}
+          <div className="flex flex-col gap-4">
+
+            {/* Stock + SKU */}
+            <div className="flex items-center justify-between">
+              <span className={`inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full border ${
+                inStock
+                  ? "bg-green-50 text-green-600 border-green-200"
+                  : "bg-red-50 text-red-500 border-red-200"
+              }`}>
+                {inStock ? "In Stock" : "Out of Stock"}
+              </span>
+              {selectedVariant?.sku && (
+                <span className="text-xs text-gray-400">SKU: {selectedVariant.sku}</span>
+              )}
+            </div>
+
+            {/* Title + Brand */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+                {product.title}
+              </h1>
+              {product.brand && (
+                <p className="text-sm text-gray-400 mt-1">{product.brand.name}</p>
+              )}
+            </div>
+
+            <StarRow />
+
+            {/* Price box */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-3xl font-black text-red-500">
+                  {currencySymbol}{price.toLocaleString()}
+                </span>
+                {hasDiscount && (
+                  <span className="text-lg text-gray-400 line-through">
+                    {currencySymbol}{comparePrice!.toLocaleString()}
+                  </span>
+                )}
+                {discount && (
+                  <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
+                    {discount}% OFF
+                  </span>
+                )}
+              </div>
+              {savings && (
+                <p className="text-green-600 text-xs font-semibold mt-1.5">
+                  You save {currencySymbol}{savings.toLocaleString()} ({discount}%)
+                </p>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Color */}
+            {colorOptions.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2.5">
+                  Color: <span className="font-normal text-gray-500">{product.color?.name ?? "�"}</span>
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {colorEntries.map((entry, i) => {
+                    if (!entry.color) return null;
+                    const isSelected = entry.slug === product.slug;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleSelectColor(i)}
+                        title={entry.color.name}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                          isSelected
+                            ? "border-gray-900 ring-2 ring-gray-900 ring-offset-2 scale-110"
+                            : "border-gray-300 hover:border-gray-600"
+                        }`}
+                        style={{ backgroundColor: entry.color.color_code ?? "#ccc" }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Attribute selectors */}
+            {Object.entries(attributeGroups).map(([attributeName, values]) => (
+              <div key={attributeName}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {attributeName}: <span className="font-normal text-gray-500">{selectedAttrs[attributeName] ?? "�"}</span>
+                  </p>
+                  <button className="text-xs text-blue-500 hover:underline flex items-center gap-1 transition">
+                    <RulerIcon className="h-3 w-3" /> Size Guide
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {values.map((value) => {
+                    const available = isAttributeValueAvailable(attributeName, value);
+                    const selected = selectedAttrs[attributeName] === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => handleSelectAttribute(attributeName, value)}
+                        disabled={!available}
+                        className={`min-w-[44px] px-4 py-1.5 text-sm font-semibold rounded border transition-all ${
+                          selected
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : available
+                              ? "bg-white text-gray-700 border-gray-200 hover:border-gray-900"
+                              : "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed line-through"
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Quantity */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2.5">Quantity:</p>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-10 h-10 flex items-center justify-center text-xl font-bold text-gray-600 hover:bg-gray-50 transition"
+                  >-</button>
+                  <span className="w-12 text-center text-sm font-bold border-x border-gray-200 h-10 flex items-center justify-center">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-10 h-10 flex items-center justify-center text-xl font-bold text-gray-600 hover:bg-gray-50 transition"
+                  >+</button>
+                </div>
+                {lowStock && product.available_stock > 0 && (
+                  <span className="text-orange-500 text-xs font-semibold flex items-center gap-1">
+                    ? Only {product.available_stock} items left!
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex gap-3 mt-1">
+              <button
+                onClick={handleAddToCart}
+                disabled={!inStock || !selectedVariant}
+                className="flex-1 bg-gray-900 hover:bg-gray-700 active:bg-black text-white py-3.5 text-sm font-bold uppercase tracking-wider transition rounded-lg flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ShoppingCart className="h-4 w-4" /> Add to Cart
+              </button>
+              <button
+                onClick={handleBuyNow}
+                disabled={!inStock || !selectedVariant}
+                className="flex-1 border-2 border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900 py-3.5 text-sm font-bold uppercase tracking-wider transition rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Buy Now
+              </button>
+            </div>
+
+            {/* Wishlist + Compare */}
+            <div className="flex items-center gap-6 text-sm text-gray-500">
+              <button className="flex items-center gap-1.5 hover:text-red-500 transition">
+                <Heart className="h-4 w-4" /> Add to Wishlist
+              </button>
+              <button className="flex items-center gap-1.5 hover:text-blue-500 transition">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Compare
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Benefits Bar */}
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 border border-gray-100 rounded-2xl p-4 md:p-5">
+          {([
+            { icon: Truck, title: "Free Shipping", sub: "On orders over ?1999" },
+            { icon: RefreshCcw, title: "Easy Returns", sub: "7 days return policy" },
+            { icon: ShieldCheck, title: "100% Original", sub: "Quality assured products" },
+            { icon: Lock, title: "Secure Payment", sub: "100% secure payment" },
+          ] as const).map(({ icon: Icon, title, sub }) => (
+            <div key={title} className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                <Icon className="h-5 w-5 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900">{title}</p>
+                <p className="text-[11px] text-gray-400 leading-tight">{sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="mt-8">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <div className="flex min-w-max">
+              {TABS.map((tab) => (
                 <button
-                  key={i}
-                  onClick={() => setSelectedImage(img)}
-                  className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                    selectedImage === img ? "border-black" : "border-transparent"
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${
+                    activeTab === tab
+                      ? "border-gray-900 text-gray-900"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  <img
-                    src={img}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  {tab === "Reviews" ? "Reviews (128)" : tab}
                 </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Right: Info */}
-        <div className="flex flex-col gap-5">
-          {product.brand && (
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
-              {product.brand.name}
-            </span>
-          )}
-
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-            {product.title}
-            {product.color && (
-              <span className="text-gray-400 font-normal"> — {product.color.name}</span>
-            )}
-          </h1>
-
-          {/* Price */}
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-black text-gray-900">
-              Tk {price.toLocaleString()}
-            </span>
-            {comparePrice && comparePrice > price && (
-              <span className="text-base text-gray-400 line-through">
-                Tk {comparePrice.toLocaleString()}
-              </span>
-            )}
-            {discount && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                {discount}% OFF
-              </span>
-            )}
           </div>
 
-          {/* Short description */}
-          {product.short_description && (
-            <p className="text-sm text-gray-500 leading-relaxed">
-              {product.short_description}
-            </p>
-          )}
-
-          {/* Color — cross-page navigation (see handleSelectColor) */}
-          {colorOptions.length > 1 && (
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                Color: <span className="text-black">{product.color?.name}</span>
-              </p>
-              <ColorSelector
-                colors={colorOptions}
-                selectedIndex={selectedColorIndex}
-                onSelect={handleSelectColor}
-                size="md"
-              />
+              {activeTab === "Description" && (
+                <div className="space-y-4">
+                  {product.short_description && (
+                    <p className="text-sm text-gray-600 leading-relaxed">{product.short_description}</p>
+                  )}
+                  {highlights.length > 0 && (
+                    <ul className="space-y-2">
+                      {highlights.map((h, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                          <span className="text-green-500 font-bold mt-0.5">?</span> {h}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {product.description && (
+                    <div
+                      className="product-description text-sm text-gray-600 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
+                  )}
+                  {product.care_instructions && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                      <p className="text-xs font-bold text-blue-700 mb-1">Care Instructions</p>
+                      <p className="text-xs text-blue-600 leading-relaxed">{product.care_instructions}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {activeTab === "Additional Information" && (
+                <p className="text-sm text-gray-500 py-4">Additional product information will be available soon.</p>
+              )}
+              {activeTab === "Reviews" && (
+                <p className="text-sm text-gray-500 py-4">Customer reviews will be shown here.</p>
+              )}
+              {activeTab === "Shipping & Returns" && (
+                <div className="space-y-3 py-2">
+                  <p className="text-sm text-gray-600">?? <strong>Free shipping</strong> on orders over ?1999. Delivery within 1-5 business days.</p>
+                  <p className="text-sm text-gray-600">? <strong>Easy 7-day returns.</strong> Item must be unused and in original packaging.</p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Non-color attribute selectors (Size, ...) — local state only */}
-          {Object.entries(attributeGroups).map(([attributeName, values]) => (
-            <SizeSelector
-              key={attributeName}
-              attributeName={attributeName}
-              values={values}
-              selectedValue={selectedAttrs[attributeName]}
-              isValueAvailable={(value) => isAttributeValueAvailable(attributeName, value)}
-              onSelect={(value) => handleSelectAttribute(attributeName, value)}
-            />
-          ))}
-
-          {/* Stock */}
-          <p
-            className={`text-xs font-medium ${
-              selectedVariant?.can_purchase ? "text-green-600" : "text-red-500"
-            }`}
-          >
-            {selectedVariant?.can_purchase
-              ? `In Stock (${selectedVariant.available_stock ?? 0} available)`
-              : "Out of Stock"}
-          </p>
-
-          {/* Quantity */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-              Quantity
-            </p>
-            <div className="flex items-center border border-gray-200 rounded-lg w-fit">
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="px-4 py-2 text-lg font-bold hover:bg-gray-50 transition rounded-l-lg"
-              >
-                −
-              </button>
-              <span className="px-6 py-2 text-sm font-bold border-x border-gray-200">
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                className="px-4 py-2 text-lg font-bold hover:bg-gray-50 transition rounded-r-lg"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-3 mt-2">
-            <button
-              onClick={handleBuyNow}
-              disabled={!selectedVariant?.can_purchase}
-              className="flex-1 bg-black hover:bg-gray-800 text-white py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black"
-            >
-              <ShoppingCart className="h-4 w-4" /> Buy Now
-            </button>
-            <button
-              onClick={handleAddToCart}
-              disabled={!selectedVariant?.can_purchase}
-              className="flex-1 border border-gray-200 hover:border-black text-gray-900 py-3 text-sm font-bold uppercase tracking-wider transition rounded-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200"
-            >
-              Add to Cart
-            </button>
-            <button className="border border-gray-200 hover:border-red-400 hover:text-red-400 text-gray-400 px-4 py-3 transition rounded-sm">
-              <Heart className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Delivery Info */}
-          <div className="border border-gray-100 rounded-xl p-4 space-y-3 mt-2">
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <span className="text-lg">🚚</span>
-              <div>
-                <p className="font-bold text-gray-900">Free Delivery</p>
-                <p className="text-gray-400">Dhaka: 1-2 days | Outside: 3-5 days</p>
+            {specifications.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 self-start">
+                <div className="divide-y divide-gray-100">
+                  {specifications.map(([key, value]) => (
+                    <div key={key} className="flex items-start gap-3 py-2.5 text-sm">
+                      <span className="text-gray-400 w-[110px] shrink-0 text-xs mt-0.5">{key}</span>
+                      <span className="text-gray-700 font-medium">{value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <span className="text-lg">↩️</span>
-              <div>
-                <p className="font-bold text-gray-900">Easy Returns</p>
-                <p className="text-gray-400">7 day return policy</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <span className="text-lg">✅</span>
-              <div>
-                <p className="font-bold text-gray-900">100% Authentic</p>
-                <p className="text-gray-400">Genuine product guaranteed</p>
-              </div>
-            </div>
+            )}
           </div>
-
-          {/* Description */}
-          {product.description && (
-            <div className="border-t border-gray-100 pt-5 mt-2">
-              <h3 className="text-sm font-bold uppercase tracking-wider mb-3">
-                Product Details
-              </h3>
-              <div
-                className="product-description text-sm text-gray-500 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Related Products */}
+        {product.related_products && product.related_products.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">You Might Also Like</h2>
+              <Link href="/shop" className="text-sm text-blue-500 hover:underline font-medium">View All</Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {product.related_products.slice(0, 4).map((rp: WebsiteProductCard) => {
+                const rpPrice = rp.price_range?.min ?? rp.variants?.[0]?.price ?? 0;
+                const rpCompare = rp.variants?.[0]?.compare_price ?? null;
+                const rpDiscount = rp.discount_percentage;
+                return (
+                  <Link
+                    key={rp.id}
+                    href={`/products/${rp.slug}`}
+                    className="group bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    <div className="relative aspect-[3/4] bg-gray-50">
+                      {rp.thumbnail ? (
+                        <img
+                          src={rp.thumbnail}
+                          alt={rp.title}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-gray-200">
+                          <ShoppingCart className="h-8 w-8" />
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => e.preventDefault()}
+                        className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow hover:text-red-500 transition text-gray-400"
+                      >
+                        <Heart className="h-3.5 w-3.5" />
+                      </button>
+                      {rpDiscount && (
+                        <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          -{rpDiscount}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      {rp.brand && <p className="text-[11px] text-gray-400">{rp.brand.name}</p>}
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                        {rp.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-red-500">{currencySymbol}{rpPrice.toLocaleString()}</span>
+                        {rpCompare && rpCompare > rpPrice && (
+                          <span className="text-xs text-gray-400 line-through">{currencySymbol}{rpCompare.toLocaleString()}</span>
+                        )}
+                        {rpDiscount && (
+                          <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">-{rpDiscount}%</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={`h-2.5 w-2.5 ${s <= 4 ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`} />
+                        ))}
+                        <span className="text-[10px] text-gray-400 ml-0.5">(96)</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Benefits */}
+        <div className="mt-12 py-8 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {([
+            { icon: Award, title: "Best Quality", sub: "Assured Quality" },
+            { icon: Truck, title: "Free Shipping", sub: "Order Over ?1999" },
+            { icon: RefreshCcw, title: "Easy Returns", sub: "Within 7 Days" },
+            { icon: Headphones, title: "Customer Support", sub: "24/7 Support" },
+          ] as const).map(({ icon: Icon, title, sub }) => (
+            <div key={title} className="flex flex-col items-center text-center gap-2.5">
+              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                <Icon className="h-6 w-6 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">{title}</p>
+                <p className="text-xs text-gray-400">{sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
