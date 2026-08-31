@@ -373,9 +373,10 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               <h3 className="text-sm font-bold uppercase tracking-wider mb-3">
                 Product Details
               </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                {product.description}
-              </p>
+              <div
+                className="product-description text-sm text-gray-500 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
           )}
         </div>
