@@ -202,6 +202,7 @@ export interface ProductCardColorOption {
   slug: string;
   color: ColorOption | null;
   thumbnail: string | null;
+    hoverImage?: string | null;
   price: number;
   comparePrice: number | null;
   discountPercentage: number | null;

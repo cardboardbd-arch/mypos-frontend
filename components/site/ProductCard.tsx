@@ -31,7 +31,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
   const current = colors[selectedIndex] ?? colors[0];
   if (!current) return null;
 
-  const { productId, slug, color, thumbnail, price, comparePrice, discountPercentage, variantId, sku } = current;
+  const { productId, slug, color, thumbnail, hoverImage, price, comparePrice, discountPercentage, variantId, sku } = current;
 
   function showToast() {
     setToastVisible(true);
@@ -118,12 +118,24 @@ export function ProductCard({ title, colors }: ProductCardProps) {
           </span>
         )}
         {thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbnail}
-            alt={color ? `${title} — ${color.name}` : title}
-            className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
-          />
+          <>
+            {/* Main / Cover Image */}
+            <img
+              src={thumbnail}
+              alt={color ? `${title} — ${color.name}` : title}
+              className={`h-full w-full object-cover transition-all duration-500 ${
+                hoverImage ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
+              }`}
+            />
+            {/* Hover Image (smooth fade-in transition like bartonbangladesh.com) */}
+            {hoverImage && (
+              <img
+                src={hoverImage}
+                alt={color ? `${title} — ${color.name} (Alternate view)` : title}
+                className="absolute inset-0 h-full w-full object-cover opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+              />
+            )}
+          </>
         ) : (
           <div className="h-full w-full flex items-center justify-center bg-gray-100">
             <ShoppingCart className="h-10 w-10 text-gray-300" />
