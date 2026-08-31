@@ -16,6 +16,7 @@ import {
   Award,
   Headphones,
   RulerIcon,
+  Check,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import type {
@@ -24,6 +25,8 @@ import type {
   WebsiteProductCard,
   WebsiteProductDetail,
 } from "@/lib/types/product";
+
+/* ------------------------------------------------------------------ helpers */
 
 function attrMap(variant: VariantSummary): Record<string, string> {
   const map: Record<string, string> = {};
@@ -40,6 +43,8 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 
+/* --------------------------------------------------------------- StarRow */
+
 function StarRow({ rating = 4.8, count = 128 }: { rating?: number; count?: number }) {
   const full = Math.floor(rating);
   return (
@@ -47,9 +52,7 @@ function StarRow({ rating = 4.8, count = 128 }: { rating?: number; count?: numbe
       {[1, 2, 3, 4, 5].map((s) => (
         <Star
           key={s}
-          className={`h-3.5 w-3.5 ${
-            s <= full ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"
-          }`}
+          className={`h-3.5 w-3.5 ${s <= full ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"}`}
         />
       ))}
       <span className="text-amber-500 font-bold text-xs ml-0.5">{rating}</span>
@@ -60,6 +63,8 @@ function StarRow({ rating = 4.8, count = 128 }: { rating?: number; count?: numbe
     </div>
   );
 }
+
+/* ======================================================== main component */
 
 interface ProductDetailClientProps {
   initialProduct: WebsiteProductDetail;
@@ -85,6 +90,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
   );
   const [quantity, setQuantity] = useState(1);
 
+  /* color (cross-page) */
   const colorEntries = useMemo(
     () => [
       { slug: product.slug, color: product.color },
@@ -102,6 +108,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     router.push(`/products/${target.slug}`);
   }
 
+  /* attribute groups */
   const attributeGroups = useMemo(() => {
     const groups: Record<string, string[]> = {};
     for (const v of product.variants ?? []) {
@@ -167,6 +174,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     router.push("/checkout");
   }
 
+  /* pricing */
   const price = selectedVariant?.price ?? product.price ?? 0;
   const comparePrice = selectedVariant?.compare_price ?? product.sale_price;
   const hasDiscount = !!(comparePrice && comparePrice > price);
@@ -174,17 +182,20 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     ? Math.round(((comparePrice! - price) / comparePrice!) * 100)
     : null;
   const savings = hasDiscount ? comparePrice! - price : null;
-  const currencySymbol = product.currency?.symbol ?? "?";
+  const sym = product.currency?.symbol ?? "৳";
 
+  /* images */
   const images = product.gallery?.length
     ? product.gallery.map((g) => g.image)
     : product.featured_image
       ? [product.featured_image]
       : [];
 
+  /* stock */
   const inStock = product.stock_status !== "out_of_stock";
   const lowStock = product.stock_status === "low_stock";
 
+  /* specifications */
   const specifications = useMemo(() => {
     if (product.specifications && typeof product.specifications === "object") {
       return Object.entries(product.specifications as Record<string, string>);
@@ -192,6 +203,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     return [];
   }, [product.specifications]);
 
+  /* highlights */
   const highlights = useMemo(() => {
     if (!product.highlights) return [];
     return Array.isArray(product.highlights)
@@ -199,6 +211,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       : [];
   }, [product.highlights]);
 
+  /* ============================================================== render */
   return (
     <div className="bg-white min-h-screen">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-5">
@@ -252,6 +265,8 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                 })}
               </div>
             )}
+
+            {/* Main image */}
             <div className="relative flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50">
               {discount && (
                 <div className="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
@@ -305,11 +320,11 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-3xl font-black text-red-500">
-                  {currencySymbol}{price.toLocaleString()}
+                  {sym}{price.toLocaleString()}
                 </span>
                 {hasDiscount && (
                   <span className="text-lg text-gray-400 line-through">
-                    {currencySymbol}{comparePrice!.toLocaleString()}
+                    {sym}{comparePrice!.toLocaleString()}
                   </span>
                 )}
                 {discount && (
@@ -320,7 +335,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               </div>
               {savings && (
                 <p className="text-green-600 text-xs font-semibold mt-1.5">
-                  You save {currencySymbol}{savings.toLocaleString()} ({discount}%)
+                  You save {sym}{savings.toLocaleString()} ({discount}%)
                 </p>
               )}
             </div>
@@ -331,7 +346,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
             {colorOptions.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2.5">
-                  Color: <span className="font-normal text-gray-500">{product.color?.name ?? "�"}</span>
+                  Color: <span className="font-normal text-gray-500">{product.color?.name ?? "—"}</span>
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   {colorEntries.map((entry, i) => {
@@ -355,12 +370,12 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               </div>
             )}
 
-            {/* Attribute selectors */}
+            {/* Attribute selectors (Size etc.) */}
             {Object.entries(attributeGroups).map(([attributeName, values]) => (
               <div key={attributeName}>
                 <div className="flex items-center justify-between mb-2.5">
                   <p className="text-sm font-semibold text-gray-700">
-                    {attributeName}: <span className="font-normal text-gray-500">{selectedAttrs[attributeName] ?? "�"}</span>
+                    {attributeName}: <span className="font-normal text-gray-500">{selectedAttrs[attributeName] ?? "—"}</span>
                   </p>
                   <button className="text-xs text-blue-500 hover:underline flex items-center gap-1 transition">
                     <RulerIcon className="h-3 w-3" /> Size Guide
@@ -399,18 +414,22 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                   <button
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     className="w-10 h-10 flex items-center justify-center text-xl font-bold text-gray-600 hover:bg-gray-50 transition"
-                  >-</button>
+                  >
+                    −
+                  </button>
                   <span className="w-12 text-center text-sm font-bold border-x border-gray-200 h-10 flex items-center justify-center">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity((q) => q + 1)}
                     className="w-10 h-10 flex items-center justify-center text-xl font-bold text-gray-600 hover:bg-gray-50 transition"
-                  >+</button>
+                  >
+                    +
+                  </button>
                 </div>
                 {lowStock && product.available_stock > 0 && (
-                  <span className="text-orange-500 text-xs font-semibold flex items-center gap-1">
-                    ? Only {product.available_stock} items left!
+                  <span className="text-orange-500 text-xs font-semibold">
+                    Only {product.available_stock} items left!
                   </span>
                 )}
               </div>
@@ -452,10 +471,10 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         {/* Benefits Bar */}
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 border border-gray-100 rounded-2xl p-4 md:p-5">
           {([
-            { icon: Truck, title: "Free Shipping", sub: "On orders over ?1999" },
-            { icon: RefreshCcw, title: "Easy Returns", sub: "7 days return policy" },
-            { icon: ShieldCheck, title: "100% Original", sub: "Quality assured products" },
-            { icon: Lock, title: "Secure Payment", sub: "100% secure payment" },
+            { icon: Truck,       title: "Free Shipping",  sub: "On orders over " + sym + "1,999" },
+            { icon: RefreshCcw,  title: "Easy Returns",   sub: "7 days return policy" },
+            { icon: ShieldCheck, title: "100% Original",  sub: "Quality assured products" },
+            { icon: Lock,        title: "Secure Payment", sub: "100% secure payment" },
           ] as const).map(({ icon: Icon, title, sub }) => (
             <div key={title} className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
@@ -500,7 +519,8 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                     <ul className="space-y-2">
                       {highlights.map((h, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                          <span className="text-green-500 font-bold mt-0.5">?</span> {h}
+                          <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          {h}
                         </li>
                       ))}
                     </ul>
@@ -527,8 +547,12 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               )}
               {activeTab === "Shipping & Returns" && (
                 <div className="space-y-3 py-2">
-                  <p className="text-sm text-gray-600">?? <strong>Free shipping</strong> on orders over ?1999. Delivery within 1-5 business days.</p>
-                  <p className="text-sm text-gray-600">? <strong>Easy 7-day returns.</strong> Item must be unused and in original packaging.</p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Free shipping</strong> on orders over {sym}1,999. Delivery within 1-5 business days.
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Easy 7-day returns.</strong> Item must be unused and in original packaging.
+                  </p>
                 </div>
               )}
             </div>
@@ -596,9 +620,9 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                         {rp.title}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-sm font-bold text-red-500">{currencySymbol}{rpPrice.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-red-500">{sym}{rpPrice.toLocaleString()}</span>
                         {rpCompare && rpCompare > rpPrice && (
-                          <span className="text-xs text-gray-400 line-through">{currencySymbol}{rpCompare.toLocaleString()}</span>
+                          <span className="text-xs text-gray-400 line-through">{sym}{rpCompare.toLocaleString()}</span>
                         )}
                         {rpDiscount && (
                           <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">-{rpDiscount}%</span>
@@ -621,10 +645,10 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         {/* Bottom Benefits */}
         <div className="mt-12 py-8 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6">
           {([
-            { icon: Award, title: "Best Quality", sub: "Assured Quality" },
-            { icon: Truck, title: "Free Shipping", sub: "Order Over ?1999" },
-            { icon: RefreshCcw, title: "Easy Returns", sub: "Within 7 Days" },
-            { icon: Headphones, title: "Customer Support", sub: "24/7 Support" },
+            { icon: Award,      title: "Best Quality",      sub: "Assured Quality" },
+            { icon: Truck,      title: "Free Shipping",     sub: "Order Over " + sym + "1,999" },
+            { icon: RefreshCcw, title: "Easy Returns",      sub: "Within 7 Days" },
+            { icon: Headphones, title: "Customer Support",  sub: "24/7 Support" },
           ] as const).map(({ icon: Icon, title, sub }) => (
             <div key={title} className="flex flex-col items-center text-center gap-2.5">
               <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
