@@ -372,7 +372,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
           <div className="flex gap-3">
             {images.length > 0 && (
               <div
-                className="flex flex-col items-center gap-1.5 w-[82px] sm:w-[90px] md:w-[96px] shrink-0 select-none"
+                className="flex flex-col items-center gap-2 w-[100px] sm:w-[115px] md:w-[125px] lg:w-[130px] shrink-0 select-none"
                 onWheel={(e) => {
                   if (images.length <= VISIBLE_THUMBS) return;
                   if (e.deltaY > 0) {
@@ -392,13 +392,13 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                     }
                     disabled={thumbStartIndex === 0}
                     aria-label="Previous thumbnails"
-                    className="w-full py-1 rounded-md bg-gray-50 hover:bg-gray-100 disabled:opacity-25 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-600 transition"
+                    className="w-full py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 disabled:opacity-20 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-700 transition border border-gray-200/80"
                   >
                     <ChevronUp className="h-4 w-4" />
                   </button>
                 )}
 
-                <div className="flex flex-col gap-2.5 w-full">
+                <div className="flex flex-col gap-3 w-full">
                   {images
                     .slice(thumbStartIndex, thumbStartIndex + VISIBLE_THUMBS)
                     .map((img, i) => {
@@ -408,10 +408,10 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                         <button
                           key={actualIdx}
                           onClick={() => setSelectedImage(img)}
-                          className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                          className={`relative w-full aspect-[3/4] rounded-lg overflow-hidden transition-all ${
                             isSelected
-                              ? "border-gray-900 shadow-sm ring-1 ring-gray-900"
-                              : "border-gray-200 hover:border-gray-400"
+                              ? "border-2 border-gray-900 shadow-sm ring-1 ring-gray-900"
+                              : "border border-gray-200 hover:border-gray-400"
                           }`}
                         >
                           <img
@@ -436,7 +436,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                       thumbStartIndex >= images.length - VISIBLE_THUMBS
                     }
                     aria-label="Next thumbnails"
-                    className="w-full py-1 rounded-md bg-gray-50 hover:bg-gray-100 disabled:opacity-25 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-600 transition"
+                    className="w-full py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 disabled:opacity-20 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-700 transition border border-gray-200/80"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </button>
