@@ -17,6 +17,8 @@ import {
   Headphones,
   RulerIcon,
   Check,
+  X,
+  ChevronLeft,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import type {
@@ -60,6 +62,81 @@ function StarRow({ rating = 4.8, count = 128 }: { rating?: number; count?: numbe
       <span className="text-gray-400 text-xs">{count} Reviews</span>
       <span className="text-gray-300 text-xs">|</span>
       <span className="text-gray-400 text-xs">256 Sold</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- LightboxModal */
+
+function LightboxModal({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: string[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(startIndex);
+  const prev = () => setIdx((i) => (i - 1 + images.length) % images.length);
+  const next = () => setIdx((i) => (i + 1) % images.length);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close fullscreen"
+        className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition z-20"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {images.length > 1 && (
+        <button
+          onClick={prev}
+          aria-label="Previous image"
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/10 hover:bg-white/25 text-white rounded-full flex items-center justify-center transition z-20"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+
+      <div className="max-w-[90vw] max-h-[85vh] flex items-center justify-center">
+        <img
+          src={images[idx]}
+          alt=""
+          className="max-w-full max-h-[85vh] object-contain rounded-lg select-none shadow-2xl"
+        />
+      </div>
+
+      {images.length > 1 && (
+        <button
+          onClick={next}
+          aria-label="Next image"
+          className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/10 hover:bg-white/25 text-white rounded-full flex items-center justify-center transition z-20"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`w-2.5 h-2.5 rounded-full transition ${
+                i === idx ? "bg-white scale-125" : "bg-white/40 hover:bg-white/70"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -191,6 +268,27 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       ? [product.featured_image]
       : [];
 
+  /* zoom state */
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+
+  /* lightbox modal */
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y });
+  }
+
+  function openLightbox() {
+    const idx = images.indexOf(selectedImage ?? "");
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  }
+
   /* stock */
   const inStock = product.stock_status !== "out_of_stock";
   const lowStock = product.stock_status === "low_stock";
@@ -214,6 +312,15 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
   /* ============================================================== render */
   return (
     <div className="bg-white min-h-screen">
+      {/* Lightbox Modal */}
+      {lightboxOpen && images.length > 0 && (
+        <LightboxModal
+          images={images}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
+
       <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-5">
 
         {/* Breadcrumb */}
@@ -266,22 +373,52 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               </div>
             )}
 
-            {/* Main image */}
-            <div className="relative flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50">
+            {/* Main image — hover zoom + click for fullscreen */}
+            <div
+              className={`relative flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50 group select-none ${
+                selectedImage ? "cursor-crosshair" : ""
+              }`}
+              onMouseEnter={() => setIsZoomed(true)}
+              onMouseLeave={() => setIsZoomed(false)}
+              onMouseMove={handleMouseMove}
+              onClick={selectedImage ? openLightbox : undefined}
+            >
               {discount && (
-                <div className="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded">
+                <div className="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded pointer-events-none">
                   -{discount}%
                 </div>
               )}
               {selectedImage ? (
-                <img src={selectedImage} alt={product.title} className="h-full w-full object-cover" />
+                <img
+                  src={selectedImage}
+                  alt={product.title}
+                  draggable={false}
+                  className="h-full w-full object-cover select-none pointer-events-none transition-transform duration-100 ease-out"
+                  style={{
+                    transform: isZoomed ? "scale(2.2)" : "scale(1)",
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  }}
+                />
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-gray-200">
                   <ShoppingCart className="h-14 w-14" />
                   <span className="text-sm text-gray-300">No image</span>
                 </div>
               )}
-              <button className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white transition shadow-sm">
+              {selectedImage && !isZoomed && (
+                <div className="absolute bottom-3 left-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="bg-black/40 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-md">
+                    Hover to zoom &bull; Click to expand
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openLightbox();
+                }}
+                className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white transition shadow-sm z-10"
+              >
                 <Maximize2 className="h-3.5 w-3.5" /> View Fullscreen
               </button>
             </div>
