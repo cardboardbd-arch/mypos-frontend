@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,6 +19,8 @@ import {
   Check,
   X,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import type {
@@ -289,6 +291,27 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     setLightboxOpen(true);
   }
 
+  /* thumbnail slider (4 limit) */
+  const VISIBLE_THUMBS = 4;
+  const [thumbStartIndex, setThumbStartIndex] = useState(0);
+
+  useEffect(() => {
+    if (!selectedImage) return;
+    const idx = images.indexOf(selectedImage);
+    if (idx !== -1) {
+      if (idx < thumbStartIndex) {
+        setThumbStartIndex(idx);
+      } else if (idx >= thumbStartIndex + VISIBLE_THUMBS) {
+        setThumbStartIndex(
+          Math.min(
+            idx - (VISIBLE_THUMBS - 1),
+            Math.max(0, images.length - VISIBLE_THUMBS)
+          )
+        );
+      }
+    }
+  }, [selectedImage, images]);
+
   /* stock */
   const inStock = product.stock_status !== "out_of_stock";
   const lowStock = product.stock_status === "low_stock";
@@ -348,28 +371,76 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
           {/* LEFT: Images */}
           <div className="flex gap-3">
             {images.length > 0 && (
-              <div className="flex flex-col gap-2 w-[68px] shrink-0">
-                {images.slice(0, 5).map((img, i) => {
-                  const isLast = i === 4 && images.length > 5;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedImage(img)}
-                      className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImage === img
-                          ? "border-gray-900 shadow-sm"
-                          : "border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <img src={img} alt="" className="h-full w-full object-cover" />
-                      {isLast && (
-                        <div className="absolute inset-0 bg-black/55 flex items-center justify-center rounded-lg">
-                          <span className="text-white text-xs font-bold">+{images.length - 5}</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+              <div
+                className="flex flex-col items-center gap-1.5 w-[82px] sm:w-[90px] md:w-[96px] shrink-0 select-none"
+                onWheel={(e) => {
+                  if (images.length <= VISIBLE_THUMBS) return;
+                  if (e.deltaY > 0) {
+                    setThumbStartIndex((prev) =>
+                      Math.min(images.length - VISIBLE_THUMBS, prev + 1)
+                    );
+                  } else if (e.deltaY < 0) {
+                    setThumbStartIndex((prev) => Math.max(0, prev - 1));
+                  }
+                }}
+              >
+                {images.length > VISIBLE_THUMBS && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setThumbStartIndex((prev) => Math.max(0, prev - 1))
+                    }
+                    disabled={thumbStartIndex === 0}
+                    aria-label="Previous thumbnails"
+                    className="w-full py-1 rounded-md bg-gray-50 hover:bg-gray-100 disabled:opacity-25 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-600 transition"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                )}
+
+                <div className="flex flex-col gap-2.5 w-full">
+                  {images
+                    .slice(thumbStartIndex, thumbStartIndex + VISIBLE_THUMBS)
+                    .map((img, i) => {
+                      const actualIdx = thumbStartIndex + i;
+                      const isSelected = selectedImage === img;
+                      return (
+                        <button
+                          key={actualIdx}
+                          onClick={() => setSelectedImage(img)}
+                          className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                            isSelected
+                              ? "border-gray-900 shadow-sm ring-1 ring-gray-900"
+                              : "border-gray-200 hover:border-gray-400"
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={`${product.title} ${actualIdx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {images.length > VISIBLE_THUMBS && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setThumbStartIndex((prev) =>
+                        Math.min(images.length - VISIBLE_THUMBS, prev + 1)
+                      )
+                    }
+                    disabled={
+                      thumbStartIndex >= images.length - VISIBLE_THUMBS
+                    }
+                    aria-label="Next thumbnails"
+                    className="w-full py-1 rounded-md bg-gray-50 hover:bg-gray-100 disabled:opacity-25 disabled:hover:bg-gray-50 flex items-center justify-center text-gray-600 transition"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             )}
 
