@@ -168,6 +168,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       null
   );
   const [quantity, setQuantity] = useState(1);
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
 
   /* color (cross-page) */
   const colorEntries = useMemo(
@@ -585,9 +586,15 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                   <p className="text-sm font-semibold text-gray-700">
                     {attributeName}: <span className="font-normal text-gray-500">{selectedAttrs[attributeName] ?? "—"}</span>
                   </p>
-                  <button className="text-xs text-blue-500 hover:underline flex items-center gap-1 transition">
-                    <RulerIcon className="h-3 w-3" /> Size Guide
-                  </button>
+                  {attributeName.toLowerCase() === "size" && product.size_guide && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSizeGuide(true)}
+                      className="text-xs text-blue-500 hover:underline flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <RulerIcon className="h-3 w-3" /> Size Guide
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {values.map((value) => {
@@ -869,6 +876,49 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
             </div>
           ))}
         </div>
+
+        {/* Size Guide Modal */}
+        {showSizeGuide && product.size_guide && (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowSizeGuide(false);
+            }}
+          >
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <RulerIcon className="h-5 w-5 text-gray-700" />
+                  <h3 className="text-base font-bold text-gray-900">
+                    {product.category?.name ? `${product.category.name} Size Guide` : "Size Guide"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSizeGuide(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div
+                className="prose prose-sm max-w-none py-4 text-gray-700 leading-relaxed overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: product.size_guide }}
+              />
+
+              <div className="pt-3 border-t border-gray-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowSizeGuide(false)}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-semibold hover:bg-gray-800 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
