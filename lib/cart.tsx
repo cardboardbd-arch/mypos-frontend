@@ -37,10 +37,32 @@ interface CartState {
 type CartAction =
   | { type: "SET"; items: CartItem[]; loading: boolean }
   | { type: "ADD"; item: CartItem }
+  | { type: "UPSERT_ITEM"; item: CartItem }
   | { type: "SET_QTY"; variantId: number; quantity: number }
   | { type: "REMOVE"; variantId: number }
   | { type: "CLEAR" }
   | { type: "ERROR"; error: string };
+
+const STORAGE_KEY = "pos_cart_items";
+
+function loadStoredCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredCart(items: CartItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 function mapApiItem(api: ApiCartItem): CartItem {
   return {
@@ -78,32 +100,67 @@ function mapToApiItem(item: Omit<CartItem, "line_total" | "name" | "slug" | "sku
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
-    case "SET":
+    case "SET": {
+      saveStoredCart(action.items);
       return { items: action.items, loading: action.loading, error: null };
-    case "ADD":
+    }
+    case "ADD": {
+      const exists = state.items.some((i) => i.variantId === action.item.variantId);
+      const updated = exists
+        ? state.items.map((i) =>
+            i.variantId === action.item.variantId
+              ? { ...i, quantity: i.quantity + action.item.quantity, line_total: (i.quantity + action.item.quantity) * i.price }
+              : i
+          )
+        : [...state.items, action.item];
+      saveStoredCart(updated);
       return {
         ...state,
-        items: state.items.find((i) => i.variantId === action.item.variantId)
-          ? state.items.map((i) =>
-              i.variantId === action.item.variantId
-                ? { ...i, quantity: i.quantity + action.item.quantity }
-                : i
-            )
-          : [...state.items, action.item],
+        items: updated,
+        loading: false,
+        error: null,
       };
-    case "SET_QTY":
-      if (action.quantity < 1)
-        return { ...state, items: state.items.filter((i) => i.variantId !== action.variantId) };
+    }
+    case "UPSERT_ITEM": {
+      const exists = state.items.some((i) => i.variantId === action.item.variantId);
+      const updated = exists
+        ? state.items.map((i) =>
+            i.variantId === action.item.variantId
+              ? { ...action.item, quantity: action.item.quantity || i.quantity }
+              : i
+          )
+        : [...state.items, action.item];
+      saveStoredCart(updated);
       return {
         ...state,
-        items: state.items.map((i) =>
-          i.variantId === action.variantId ? { ...i, quantity: action.quantity } : i
-        ),
+        items: updated,
+        loading: false,
+        error: null,
       };
-    case "REMOVE":
-      return { ...state, items: state.items.filter((i) => i.variantId !== action.variantId) };
-    case "CLEAR":
+    }
+    case "SET_QTY": {
+      const updated = action.quantity < 1
+        ? state.items.filter((i) => i.variantId !== action.variantId)
+        : state.items.map((i) =>
+            i.variantId === action.variantId
+              ? { ...i, quantity: action.quantity, line_total: action.quantity * i.price }
+              : i
+          );
+      saveStoredCart(updated);
+      return {
+        ...state,
+        items: updated,
+      };
+    }
+    case "REMOVE": {
+      const updated = state.items.filter((i) => i.variantId !== action.variantId);
+      saveStoredCart(updated);
+      return { ...state, items: updated };
+    }
+    case "CLEAR": {
+      saveStoredCart([]);
       return { ...state, items: [] };
+    }
     case "ERROR":
       return { ...state, error: action.error };
     default:
@@ -137,14 +194,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const refreshCart = async () => {
     try {
       const cart = await getCartApi();
-      dispatch({
-        type: "SET",
-        items: cart.items.map(mapApiItem),
-        loading: false,
-      });
+      const serverItems = cart?.items?.map(mapApiItem) ?? [];
+      if (serverItems.length > 0) {
+        dispatch({
+          type: "SET",
+          items: serverItems,
+          loading: false,
+        });
+      } else {
+        const local = loadStoredCart();
+        dispatch({
+          type: "SET",
+          items: local,
+          loading: false,
+        });
+      }
     } catch (err: any) {
-      dispatch({ type: "ERROR", error: err.message || "Failed to load cart" });
-      dispatch({ type: "SET", items: [], loading: false });
+      console.warn("Could not sync cart from API, using local cart:", err);
+      const local = loadStoredCart();
+      dispatch({ type: "SET", items: local, loading: false });
     }
   };
 
@@ -157,36 +225,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "ADD", item: optimistic });
     try {
       const apiItem = await addToCartApi(item.productId, item.variantId, qty);
-      dispatch({ type: "SET", items: state.items.map((i) => (i.variantId === apiItem.variant_id ? mapApiItem(apiItem) : i)), loading: false });
+      dispatch({ type: "UPSERT_ITEM", item: mapApiItem(apiItem) });
     } catch (err: any) {
-      dispatch({ type: "ERROR", error: err.message || "Failed to add item" });
-      dispatch({ type: "SET_QTY", variantId: item.variantId, quantity: Math.max(1, (state.items.find((i) => i.variantId === item.variantId)?.quantity || 1) - qty) });
+      console.warn("Failed to sync item to cart API, keeping optimistic item:", err);
+      // Keep optimistic item in local cart!
     }
   };
 
   const updateQuantity = async (variantId: number, qty: number) => {
     dispatch({ type: "SET_QTY", variantId, quantity: qty });
     try {
-      const item = state.items.find((i) => i.variantId === variantId);
-      if (item) {
+      const currentItems = loadStoredCart();
+      const item = currentItems.find((i) => i.variantId === variantId);
+      if (item && item.id) {
         const updated = await updateCartItemApi(item.id, qty);
-        dispatch({ type: "SET", items: state.items.map((i) => (i.id === updated.id ? mapApiItem(updated) : i)), loading: false });
+        dispatch({ type: "UPSERT_ITEM", item: mapApiItem(updated) });
       }
     } catch (err: any) {
-      dispatch({ type: "ERROR", error: err.message || "Failed to update quantity" });
-      dispatch({ type: "SET_QTY", variantId, quantity: state.items.find((i) => i.variantId === variantId)?.quantity || 1 });
+      console.warn("Failed to update quantity on API:", err);
     }
   };
 
   const removeFromCart = async (variantId: number) => {
+    const currentItems = loadStoredCart();
+    const item = currentItems.find((i) => i.variantId === variantId);
     dispatch({ type: "REMOVE", variantId });
     try {
-      const item = state.items.find((i) => i.variantId === variantId);
-      if (item) {
+      if (item && item.id) {
         await removeFromCartApi(item.id);
       }
     } catch (err: any) {
-      dispatch({ type: "ERROR", error: err.message || "Failed to remove item" });
+      console.warn("Failed to remove item on API:", err);
     }
   };
 
@@ -195,11 +264,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       await clearCartApi();
     } catch (err: any) {
-      dispatch({ type: "ERROR", error: err.message || "Failed to clear cart" });
+      console.warn("Failed to clear cart on API:", err);
     }
   };
 
   useEffect(() => {
+    const stored = loadStoredCart();
+    if (stored.length > 0) {
+      dispatch({ type: "SET", items: stored, loading: false });
+    }
     refreshCart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

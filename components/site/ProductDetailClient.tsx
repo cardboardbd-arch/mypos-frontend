@@ -249,8 +249,24 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     );
   }
 
-  function handleBuyNow() {
-    handleAddToCart();
+  async function handleBuyNow() {
+    if (!selectedVariant) return;
+    await addToCart(
+      {
+        id: selectedVariant.id,
+        productId: product.product_id || (product as any).id,
+        variantId: selectedVariant.id,
+        name: product.title,
+        slug: product.slug,
+        sku: selectedVariant.sku,
+        price: selectedVariant.price,
+        compare_price: selectedVariant.compare_price ?? undefined,
+        thumbnail: product.featured_image ?? undefined,
+        attributes: attrMap(selectedVariant),
+        quantity,
+      },
+      quantity
+    );
     router.push("/checkout");
   }
 

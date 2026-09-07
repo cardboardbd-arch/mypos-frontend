@@ -75,13 +75,13 @@ export function ProductCard({ title, colors }: ProductCardProps) {
     showToast();
   }
 
-  function handleBuyNow(e: React.MouseEvent) {
+  async function handleBuyNow(e: React.MouseEvent) {
     e.preventDefault();
     if (variantId == null) {
       router.push(`/products/${slug}`);
       return;
     }
-    addToCart(
+    await addToCart(
       {
         id: variantId,
         productId,
