@@ -22,12 +22,46 @@ interface Props {
 }
 
 const FALLBACK_NAV: NavLink[] = [
-  { label: "Shop",         href: "/shop" },
-  { label: "Categories",   href: "/categories" },
-  { label: "Brands",       href: "/brands" },
-  { label: "New Arrivals", href: "/shop?sort=newest" },
-  { label: "Sale",         href: "/shop?sale=true" },
+  { label: "Home",        href: "/" },
+  { label: "Shop",        href: "/shop" },
+  { label: "Categories",  href: "/categories" },
+  { label: "Brands",      href: "/brands" },
+  { label: "Collections", href: "/collections" },
+  { label: "Blog",        href: "/blog" },
+  { label: "Contact",     href: "/contact" },
 ];
+
+const NAV_CACHE_KEY = "pos_site_nav_links";
+const LOGO_CACHE_KEY = "pos_site_logo_url";
+const NAME_CACHE_KEY = "pos_site_name";
+
+function getStoredNav(): NavLink[] {
+  if (typeof window === "undefined") return FALLBACK_NAV;
+  try {
+    const raw = localStorage.getItem(NAV_CACHE_KEY);
+    return raw ? JSON.parse(raw) : FALLBACK_NAV;
+  } catch {
+    return FALLBACK_NAV;
+  }
+}
+
+function getStoredLogo(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(LOGO_CACHE_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function getStoredSiteName(): string {
+  if (typeof window === "undefined") return "Marvelous Lifestyle";
+  try {
+    return localStorage.getItem(NAME_CACHE_KEY) || "Marvelous Lifestyle";
+  } catch {
+    return "Marvelous Lifestyle";
+  }
+}
 
 export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: siteNameProp }: Props = {}) {
   const router = useRouter();
@@ -36,47 +70,73 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [navLinks, setNavLinks] = useState<NavLink[]>(navLinksProp?.length ? navLinksProp : FALLBACK_NAV);
-  // Admin-uploaded logo/site name (GeneralSettings). null/undefined means
-  // "no logo configured" — the static PIXELIZZ wordmark stays as the
-  // fallback, it's never left blank.
-  const [logoUrl, setLogoUrl] = useState<string | null>(logoUrlProp ?? null);
-  const [siteName, setSiteName] = useState<string | null>(siteNameProp ?? null);
+  const [navLinks, setNavLinks] = useState<NavLink[]>(() =>
+    navLinksProp?.length ? navLinksProp : getStoredNav()
+  );
+  const [logoUrl, setLogoUrl] = useState<string | null>(() =>
+    logoUrlProp ? resolveMediaUrl(logoUrlProp) : getStoredLogo()
+  );
+  const [siteName, setSiteName] = useState<string>(() =>
+    siteNameProp || getStoredSiteName()
+  );
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     setIsLoggedIn(!!getToken());
   }, []);
 
   useEffect(() => {
-    if (navLinksProp !== undefined || logoUrlProp !== undefined || siteNameProp !== undefined) {
-      // The homepage already fetched /v1/home itself and passed these
-      // down — no second request needed.
-      if (navLinksProp && navLinksProp.length > 0) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setNavLinks(navLinksProp);
-      }
-      if (logoUrlProp !== undefined) {
-        setLogoUrl(resolveMediaUrl(logoUrlProp));
-      }
-      if (siteNameProp !== undefined) {
-        setSiteName(siteNameProp);
-      }
+    // If props are passed, use and cache them immediately
+    if (navLinksProp && navLinksProp.length > 0) {
+      setNavLinks(navLinksProp);
+      try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(navLinksProp)); } catch {}
+    }
+    if (logoUrlProp !== undefined) {
+      const resolved = resolveMediaUrl(logoUrlProp);
+      setLogoUrl(resolved);
+      setLogoError(false);
+      try {
+        if (resolved) localStorage.setItem(LOGO_CACHE_KEY, resolved);
+        else localStorage.removeItem(LOGO_CACHE_KEY);
+      } catch {}
+    }
+    if (siteNameProp !== undefined && siteNameProp) {
+      setSiteName(siteNameProp);
+      try { localStorage.setItem(NAME_CACHE_KEY, siteNameProp); } catch {}
+    }
+
+    if (navLinksProp !== undefined && logoUrlProp !== undefined && siteNameProp !== undefined) {
       return;
     }
-    // No props (every page other than the homepage) — reuse the same
-    // aggregated endpoint rather than the retired /v1/cms/navigation (see
-    // docs/theme-contract.md, mypos repo) for nav links, logo, and site name.
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
+
+    // Always keep navigation, logo, and site name fresh from /v1/home
+    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiBase) return;
+
+    fetch(`${apiBase}/v1/home`, {
       headers: { Accept: "application/json" },
     })
       .then((r) => r.json())
       .then((res) => {
         const items = res.data?.navigation?.links;
-        if (items?.length) setNavLinks(items);
-        if (res.data?.site?.logo) setLogoUrl(resolveMediaUrl(res.data.site.logo));
-        if (res.data?.site?.name) setSiteName(res.data.site.name);
+        if (items?.length) {
+          setNavLinks(items);
+          try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
+        }
+        if (res.data?.site?.logo) {
+          const resolved = resolveMediaUrl(res.data.site.logo);
+          setLogoUrl(resolved);
+          setLogoError(false);
+          try {
+            if (resolved) localStorage.setItem(LOGO_CACHE_KEY, resolved);
+          } catch {}
+        }
+        if (res.data?.site?.name) {
+          setSiteName(res.data.site.name);
+          try { localStorage.setItem(NAME_CACHE_KEY, res.data.site.name); } catch {}
+        }
       })
-      .catch(() => {/* keep fallback */});
+      .catch(() => {/* keep fallback / cached data */});
   }, [navLinksProp, logoUrlProp, siteNameProp]);
 
   function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -100,25 +160,26 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
       <div className="h-20 flex items-center justify-between max-w-[1440px] mx-auto px-4">
 
         {/* LEFT — Logo */}
-        <Link href="/">
-          {logoUrl ? (
+        <Link href="/" className="flex items-center group">
+          {logoUrl && !logoError ? (
             <Image
               src={logoUrl}
-              alt={siteName ?? "Pixelizz"}
-              width={160}
+              alt={siteName || "Marvelous Lifestyle"}
+              width={180}
               height={48}
               loading="eager"
               fetchPriority="high"
-              className="h-12 w-auto object-contain px-4 py-1"
+              className="h-10 md:h-12 w-auto object-contain py-1 group-hover:opacity-90 transition"
               style={{ width: "auto" }}
+              onError={() => setLogoError(true)}
             />
           ) : (
-            <div className="flex flex-col items-center px-4 py-1">
-              <span className="font-black text-3xl tracking-tighter leading-none bg-black text-white px-2 py-1 rounded">
-                PIXELIZZ
+            <div className="flex flex-col py-1">
+              <span className="font-black text-xl md:text-2xl tracking-tight uppercase text-black leading-tight group-hover:text-gray-700 transition">
+                {siteName || "Marvelous Lifestyle"}
               </span>
-              <span className="text-[10px] tracking-[0.4em] font-bold mt-1 text-black">
-                BUSINESS OS
+              <span className="text-[9px] tracking-[0.25em] font-semibold text-gray-500 uppercase">
+                Luxury Lifestyle
               </span>
             </div>
           )}
