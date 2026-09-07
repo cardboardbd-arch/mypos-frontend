@@ -13,7 +13,7 @@ import type {
 export function toColorOption(card: WebsiteProductCard): ProductCardColorOption {
   const firstVariant = card.variants?.[0];
   return {
-    productId: card.product_id,
+    productId: card.product_id || (card as any).id,
     slug: card.slug,
     color: card.color,
     thumbnail: card.thumbnail,

@@ -4,6 +4,7 @@ import { Footer } from "@/components/site/Footer";
 import { Trash2, Plus, Minus, ShoppingBag, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
+import { formatItemAttributes } from "@/lib/attributes";
 
 export default function CartPage() {
   const { items, cartCount, cartTotal, loading, error, refreshCart, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -106,9 +107,9 @@ export default function CartPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <Link href={`/products/${item.slug}`} className="text-sm font-black hover:underline line-clamp-1">{item.name}</Link>
-                    {item.attributes && Object.entries(item.attributes).length > 0 && (
+                    {formatItemAttributes(item.attributes) && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {Object.entries(item.attributes).filter(([, v]) => v !== "Default").map(([k, v]) => `${k}: ${v}`).join(" • ")}
+                        {formatItemAttributes(item.attributes)}
                       </p>
                     )}
                     <p className="text-sm font-black mt-1">Tk {item.price.toLocaleString()}</p>

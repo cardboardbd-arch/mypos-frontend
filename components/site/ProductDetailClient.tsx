@@ -234,7 +234,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     addToCart(
       {
         id: selectedVariant.id,
-        productId: product.product_id,
+        productId: product.product_id || (product as any).id,
         variantId: selectedVariant.id,
         name: product.title,
         slug: product.slug,

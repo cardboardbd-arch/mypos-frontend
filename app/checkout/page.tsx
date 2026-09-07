@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { ChevronRight, ShieldCheck, Truck, RotateCcw, Tag, ShoppingCart, CheckCircle2, MapPin } from "lucide-react";
+import { ChevronRight, ShieldCheck, Truck, RotateCcw, Tag, ShoppingCart, CheckCircle2, MapPin, AlertCircle } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { getAddresses, type CustomerAddress } from "@/lib/auth";
+import { formatItemAttributes } from "@/lib/attributes";
 
 export default function CheckoutPage() {
   const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart } = useCart();
@@ -92,11 +93,42 @@ export default function CheckoutPage() {
 
   function validateForm(): boolean {
     const errors: Record<string, string> = {};
-    if (!form.name.trim()) errors.name = "Name is required";
-    if (!form.phone.trim()) errors.phone = "Phone is required";
-    if (!form.address.trim()) errors.address = "Address is required";
+    if (!form.name.trim()) {
+      errors.name = "Full name is required";
+    }
+
+    const cleanPhone = form.phone.trim().replace(/[\s-]/g, "");
+    if (!cleanPhone) {
+      errors.phone = "Phone number is required";
+    } else if (!/^(?:\+?88)?01[3-9]\d{8}$/.test(cleanPhone)) {
+      errors.phone = "Please enter a valid 11-digit phone number (e.g. 017XXXXXXXX)";
+    }
+
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    const needsAddress = savedAddresses.length === 0 || selectedAddressId === "manual";
+    if (needsAddress) {
+      if (!form.address.trim()) {
+        errors.address = "Full address is required";
+      }
+      if (!form.city.trim()) {
+        errors.city = "City / District is required";
+      }
+    } else if (typeof selectedAddressId !== "number") {
+      errors.address = "Please select a delivery address";
+    }
+
     setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      setError("Please fix the highlighted errors below before placing your order.");
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return false;
+    }
+    return true;
   }
 
   async function handleApplyCoupon() {
@@ -184,24 +216,33 @@ export default function CheckoutPage() {
       setError("Your cart is empty.");
       return;
     }
+    const invalidItem = items.find(item => !item.productId || !item.variantId);
+    if (invalidItem) {
+      setError("Some items in your cart have incomplete product or variant details. Please remove them and re-add them.");
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
     setLoading(true);
 
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
     const orderData = {
-      name: form.name,
-      phone: form.phone,
-      email: form.email || undefined,
-      address: form.address,
-      area: form.area,
-      city: form.city,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || undefined,
+      address: form.address.trim(),
+      area: form.area.trim(),
+      city: form.city.trim(),
       // Server is authoritative: it re-verifies address_id belongs to the
       // authenticated customer and builds the shipping_address snapshot
       // from the saved record itself, not from the fields above — those
       // are still sent for display consistency but ignored server-side
       // whenever address_id is present. See OrderController::store().
       address_id: typeof selectedAddressId === "number" ? selectedAddressId : undefined,
-      notes: form.notes,
+      notes: form.notes.trim() || undefined,
       payment_method: paymentMethod,
       delivery_charge: deliveryCharge,
       coupon_code: couponApplied ? coupon : undefined,
@@ -230,11 +271,35 @@ export default function CheckoutPage() {
       if (!res.ok) {
         if (data.errors) {
           const fieldErrors: Record<string, string> = {};
+          const unmappedErrors: string[] = [];
+
           for (const [field, messages] of Object.entries(data.errors)) {
-            fieldErrors[field] = Array.isArray(messages) ? messages[0] : String(messages);
+            const msg = Array.isArray(messages) ? messages[0] : String(messages);
+            fieldErrors[field] = msg;
+
+            if (["name", "phone", "email", "address", "area", "city"].includes(field)) {
+              // Direct form fields
+            } else if (field.startsWith("items")) {
+              const match = field.match(/items\.(\d+)/);
+              if (match) {
+                const itemIdx = parseInt(match[1], 10);
+                const itemName = items[itemIdx]?.name ? `"${items[itemIdx].name}"` : `Item #${itemIdx + 1}`;
+                unmappedErrors.push(`${itemName}: ${msg}`);
+              } else {
+                unmappedErrors.push(`Cart: ${msg}`);
+              }
+            } else if (field !== "coupon_code") {
+              unmappedErrors.push(`${field.replace(/_/g, " ")}: ${msg}`);
+            }
           }
           setValidationErrors(fieldErrors);
-          setError("Please fix the errors below.");
+
+          if (unmappedErrors.length > 0) {
+            setError(unmappedErrors.join(" • "));
+          } else {
+            setError("Please fix the highlighted errors below.");
+          }
+
           // The coupon passed a pre-check but was rejected at order-creation
           // time (e.g. someone else used its last redemption in between) —
           // drop it so the displayed total stops claiming a discount that
@@ -246,6 +311,9 @@ export default function CheckoutPage() {
           }
         } else {
           setError(data.message ?? `Order failed (HTTP ${res.status})`);
+        }
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
         setLoading(false);
         return;
@@ -360,8 +428,24 @@ export default function CheckoutPage() {
         <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-8">
 
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3">
-              {error}
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <p className="font-bold text-red-800">{error}</p>
+                  {Object.entries(validationErrors).filter(([k]) => !k.startsWith("items") && k !== "coupon_code").length > 0 && (
+                    <ul className="text-xs text-red-600 list-disc list-inside space-y-0.5 pt-1">
+                      {Object.entries(validationErrors)
+                        .filter(([k]) => !k.startsWith("items") && k !== "coupon_code")
+                        .map(([k, v]) => (
+                          <li key={k}>
+                            <span className="font-semibold capitalize">{k.replace(/_/g, " ")}:</span> {v}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -395,7 +479,8 @@ export default function CheckoutPage() {
                     <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Email Address <span className="text-gray-300">(Optional)</span></label>
                     <input name="email" value={form.email} onChange={handleChange}
                       placeholder="your@email.com"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white" />
+                      className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.email ? "border-red-300" : "border-gray-200"}`} />
+                    {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
                   </div>
                 </div>
               </div>
@@ -497,16 +582,18 @@ export default function CheckoutPage() {
                           <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Thana / Area</label>
                           <input name="area" value={form.area} onChange={handleChange}
                             placeholder="Mirpur, Dhanmondi..."
-                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white" />
+                            className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.area ? "border-red-300" : "border-gray-200"}`} />
+                          {validationErrors.area && <p className="text-red-500 text-xs mt-1">{validationErrors.area}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">City / District</label>
+                          <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">City / District <span className="text-red-500">*</span></label>
                           <select name="city" value={form.city} onChange={handleChange}
-                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white">
+                            className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.city ? "border-red-300" : "border-gray-200"}`}>
                             {["Dhaka","Chattogram","Sylhet","Rajshahi","Khulna","Barishal","Rangpur","Mymensingh","Comilla","Narayanganj","Gazipur"].map(c => (
                               <option key={c} value={c}>{c}</option>
                             ))}
                           </select>
+                          {validationErrors.city && <p className="text-red-500 text-xs mt-1">{validationErrors.city}</p>}
                         </div>
                       </div>
                     </>
@@ -579,27 +666,43 @@ export default function CheckoutPage() {
 
                 {/* Items */}
                 <div className="p-5 space-y-4 max-h-64 overflow-y-auto">
-                  {items.map((item) => (
-                    <div key={item.variantId} className="flex gap-3">
-                      <div className="w-14 h-14 bg-gray-100 rounded-lg shrink-0 overflow-hidden flex items-center justify-center">
-                        {item.thumbnail
-                          ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
-                          : <span className="text-xl">📦</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-tight">{item.name}</p>
-                        {item.attributes && Object.entries(item.attributes).length > 0 && (
-                          <p className="text-[10px] text-gray-400">
-                            {Object.entries(item.attributes).filter(([, v]) => v !== "Default").map(([k, v]) => `${k}: ${v}`).join(" • ")}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-[10px] text-gray-400">Qty: {item.quantity}</span>
-                          <span className="text-xs font-black text-gray-900">Tk {(item.price * item.quantity).toLocaleString()}</span>
+                  {items.map((item, index) => {
+                    const itemError =
+                      validationErrors[`items.${index}.variant_id`] ||
+                      validationErrors[`items.${index}.product_id`] ||
+                      validationErrors[`items.${index}.quantity`];
+                    return (
+                      <div
+                        key={item.variantId || index}
+                        className={`flex gap-3 p-2 rounded-xl transition ${
+                          itemError ? "bg-red-50 border border-red-200" : ""
+                        }`}
+                      >
+                        <div className="w-14 h-14 bg-gray-100 rounded-lg shrink-0 overflow-hidden flex items-center justify-center">
+                          {item.thumbnail
+                            ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
+                            : <span className="text-xl">📦</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-tight">{item.name}</p>
+                          {formatItemAttributes(item.attributes) && (
+                            <p className="text-[10px] text-gray-500 font-medium">
+                              {formatItemAttributes(item.attributes)}
+                            </p>
+                          )}
+                          {itemError && (
+                            <p className="text-[10px] font-bold text-red-600 mt-0.5">
+                              ⚠️ {itemError}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-[10px] text-gray-400">Qty: {item.quantity}</span>
+                            <span className="text-xs font-black text-gray-900">Tk {(item.price * item.quantity).toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Coupon */}

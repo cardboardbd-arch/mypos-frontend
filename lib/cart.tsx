@@ -9,6 +9,7 @@ import {
   removeFromCartApi,
   clearCartApi,
 } from "./cart-api";
+import { normalizeItemAttributes } from "./attributes";
 
 // ─── Context cart item shape (camelCase) ─────────────────────────────────────
 
@@ -44,15 +45,15 @@ type CartAction =
 function mapApiItem(api: ApiCartItem): CartItem {
   return {
     id: api.id,
-    productId: api.product_id,
-    variantId: api.variant_id,
-    name: api.product.name,
-    slug: api.product.slug,
-    sku: api.variant.sku,
-    price: api.variant.price,
+    productId: api.product_id || (api.product?.id ?? 0),
+    variantId: api.variant_id || (api.variant?.id ?? 0),
+    name: api.product?.name ?? "Product",
+    slug: api.product?.slug ?? "",
+    sku: api.variant?.sku ?? "",
+    price: Number(api.variant?.price) || 0,
     quantity: api.quantity,
-    attributes: api.variant.attributes,
-    line_total: api.line_total,
+    attributes: normalizeItemAttributes(api.variant?.attributes),
+    line_total: api.line_total ?? (Number(api.variant?.price) || 0) * api.quantity,
   };
 }
 
