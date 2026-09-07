@@ -123,8 +123,9 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
           setNavLinks(items);
           try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
         }
-        if (res.data?.site?.logo) {
-          const resolved = resolveMediaUrl(res.data.site.logo);
+        const remoteLogo = res.data?.site?.logo || res.data?.theme?.logo;
+        if (remoteLogo) {
+          const resolved = resolveMediaUrl(remoteLogo);
           setLogoUrl(resolved);
           setLogoError(false);
           try {
@@ -169,6 +170,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
               height={48}
               loading="eager"
               fetchPriority="high"
+              unoptimized
               className="h-10 md:h-12 w-auto object-contain py-1 group-hover:opacity-90 transition"
               style={{ width: "auto" }}
               onError={() => setLogoError(true)}
