@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,7 +32,18 @@ export function ProductCard({ title, colors }: ProductCardProps) {
   const current = colors[selectedIndex] ?? colors[0];
   if (!current) return null;
 
-  const { productId, slug, color, thumbnail, hoverImage, price, comparePrice, discountPercentage, variantId, sku } = current;
+  const {
+    productId,
+    slug,
+    color,
+    thumbnail,
+    hoverImage,
+    price,
+    comparePrice,
+    discountPercentage,
+    variantId,
+    sku,
+  } = current;
 
   function showToast() {
     setToastVisible(true);
@@ -40,29 +52,26 @@ export function ProductCard({ title, colors }: ProductCardProps) {
 
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault();
-    // A product id is never a valid variant id in this system — every
-    // purchasable product has at least one real ProductVariant row, and
-    // stock/checkout are keyed off variant_id, not product_id. If no
-    // variantId was resolved (caller didn't have one, or the product
-    // genuinely has no variants yet), quick-add can't work; send the
-    // shopper to the product page instead of guessing.
     if (variantId == null) {
       router.push(`/products/${slug}`);
       return;
     }
-    addToCart({
-      id: variantId,
-      productId,
-      variantId,
-      name: title,
-      slug,
-      sku: sku ?? "",
-      price,
-      compare_price: comparePrice ?? undefined,
-      thumbnail: thumbnail ?? undefined,
-      attributes: color ? { Color: color.name } : {},
-      quantity: 1,
-    }, 1);
+    addToCart(
+      {
+        id: variantId,
+        productId,
+        variantId,
+        name: title,
+        slug,
+        sku: sku ?? "",
+        price,
+        compare_price: comparePrice ?? undefined,
+        thumbnail: thumbnail ?? undefined,
+        attributes: color ? { Color: color.name } : {},
+        quantity: 1,
+      },
+      1
+    );
     showToast();
   }
 
@@ -72,19 +81,22 @@ export function ProductCard({ title, colors }: ProductCardProps) {
       router.push(`/products/${slug}`);
       return;
     }
-    addToCart({
-      id: variantId,
-      productId,
-      variantId,
-      name: title,
-      slug,
-      sku: sku ?? "",
-      price,
-      compare_price: comparePrice ?? undefined,
-      thumbnail: thumbnail ?? undefined,
-      attributes: color ? { Color: color.name } : {},
-      quantity: 1,
-    }, 1);
+    addToCart(
+      {
+        id: variantId,
+        productId,
+        variantId,
+        name: title,
+        slug,
+        sku: sku ?? "",
+        price,
+        compare_price: comparePrice ?? undefined,
+        thumbnail: thumbnail ?? undefined,
+        attributes: color ? { Color: color.name } : {},
+        quantity: 1,
+      },
+      1
+    );
     router.push("/checkout");
   }
 
@@ -108,6 +120,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
       <Link
         href={`/products/${slug}`}
         className="relative aspect-[4/5] overflow-hidden bg-gray-50 block"
@@ -117,22 +130,30 @@ export function ProductCard({ title, colors }: ProductCardProps) {
             {discountPercentage}% OFF
           </span>
         )}
+
         {thumbnail ? (
           <>
-            {/* Main / Cover Image */}
-            <img
+            {/* Main image — next/image gives auto WebP + srcset */}
+            <Image
               src={thumbnail}
               alt={color ? `${title} — ${color.name}` : title}
-              className={`h-full w-full object-cover transition-all duration-500 ${
-                hoverImage ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              loading="lazy"
+              className={`object-cover transition-all duration-500 ${
+                hoverImage
+                  ? "group-hover:opacity-0 group-hover:scale-105"
+                  : "group-hover:scale-105"
               }`}
             />
-            {/* Hover Image (smooth fade-in transition like bartonbangladesh.com) */}
             {hoverImage && (
-              <img
+              <Image
                 src={hoverImage}
                 alt={color ? `${title} — ${color.name} (Alternate view)` : title}
-                className="absolute inset-0 h-full w-full object-cover opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                loading="lazy"
+                className="absolute inset-0 object-cover opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
               />
             )}
           </>

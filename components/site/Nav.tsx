@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Search, Heart, ShoppingBag, User, Menu, X, Package, LogOut } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { getToken, logoutCustomer, removeToken } from "@/lib/auth";
 import { resolveMediaUrl } from "@/lib/resolveMediaUrl";
+
 
 interface NavLink { label: string; href: string; }
 
@@ -100,11 +102,15 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
         {/* LEFT — Logo */}
         <Link href="/">
           {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={logoUrl}
               alt={siteName ?? "Pixelizz"}
+              width={160}
+              height={48}
+              loading="eager"
+              fetchPriority="high"
               className="h-12 w-auto object-contain px-4 py-1"
+              style={{ width: "auto" }}
             />
           ) : (
             <div className="flex flex-col items-center px-4 py-1">

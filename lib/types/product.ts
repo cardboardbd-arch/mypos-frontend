@@ -81,6 +81,8 @@ export interface WebsiteProductCard {
   title: string; // plain style name, never concatenated with color server-side
   color: ColorOption | null; // null = non-fashion / single-color item
   thumbnail: string | null;
+  /** Second image shown on hover in the product card (optional). */
+  hover_image?: string | null;
   product_type: string;
   category: CategoryRef | null;
   brand: BrandRef | null;
@@ -178,6 +180,8 @@ export interface LegacyProductCard {
   slug: string; // products.slug
   sku?: string;
   thumbnail: string | null;
+  /** Second image shown on hover in the product card (optional). */
+  hover_image?: string | null;
   product_type: string;
   category?: CategoryRef;
   brand?: BrandRef;

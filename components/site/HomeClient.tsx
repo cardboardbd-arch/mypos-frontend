@@ -5,7 +5,10 @@ import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { CmsHomepageSections } from "@/components/site/sections/CmsHomepageSections";
 import { HeroSliderSection } from "@/components/site/sections/HeroSliderSection";
+import { SkeletonNav } from "@/components/site/SkeletonNav";
+import { SkeletonSection } from "@/components/site/SkeletonSection";
 import type { RawHomepageSection } from "@/components/site/sections/types";
+
 
 interface ProductCard {
   id: number;
@@ -120,13 +123,14 @@ export default function HomeClient() {
   if (loading) {
     return (
       <main className="bg-white text-gray-900 w-full overflow-x-hidden">
-        <Nav />
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-pulse text-gray-400 text-sm">
-            Loading homepage…
-          </div>
+        <SkeletonNav />
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 space-y-6 pt-2 pb-12">
+          {/* Hero skeleton */}
+          <div className="skeleton w-full rounded-2xl" style={{ aspectRatio: "16/6" }} />
+          {/* Product section skeletons */}
+          <SkeletonSection cards={5} />
+          <SkeletonSection cards={5} />
         </div>
-        <Footer />
       </main>
     );
   }
