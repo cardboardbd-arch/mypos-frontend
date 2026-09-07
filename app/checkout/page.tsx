@@ -9,7 +9,7 @@ import { getAddresses, type CustomerAddress } from "@/lib/auth";
 import { formatItemAttributes } from "@/lib/attributes";
 
 export default function CheckoutPage() {
-  const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart } = useCart();
+  const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart, removeFromCart } = useCart();
   const [form, setForm] = useState({
     name: "", phone: "", email: "",
     address: "", area: "", city: "Dhaka", notes: "",
@@ -691,9 +691,18 @@ export default function CheckoutPage() {
                             </p>
                           )}
                           {itemError && (
-                            <p className="text-[10px] font-bold text-red-600 mt-0.5">
-                              ⚠️ {itemError}
-                            </p>
+                            <div className="flex items-center justify-between gap-2 mt-1 bg-white/70 p-1 rounded border border-red-200">
+                              <p className="text-[10px] font-bold text-red-600 leading-tight">
+                                ⚠️ {itemError}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => removeFromCart(item.variantId)}
+                                className="text-[10px] font-bold text-red-600 hover:text-red-800 underline shrink-0 px-1"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           )}
                           <div className="flex items-center justify-between mt-1">
                             <span className="text-[10px] text-gray-400">Qty: {item.quantity}</span>
