@@ -10,6 +10,7 @@ import {
   clearCartApi,
 } from "./cart-api";
 import { normalizeItemAttributes } from "./attributes";
+import { resolveMediaUrl } from "./media";
 
 // ─── Context cart item shape (camelCase) ─────────────────────────────────────
 
@@ -65,6 +66,13 @@ function saveStoredCart(items: CartItem[]) {
 }
 
 function mapApiItem(api: ApiCartItem): CartItem {
+  const rawThumb =
+    api.thumbnail ||
+    api.variant?.image ||
+    api.product?.thumbnail ||
+    null;
+  const thumb = resolveMediaUrl(rawThumb) || rawThumb;
+
   return {
     id: api.id,
     productId: api.product_id || (api.product?.id ?? 0),
@@ -73,6 +81,7 @@ function mapApiItem(api: ApiCartItem): CartItem {
     slug: api.product?.slug ?? "",
     sku: api.variant?.sku ?? "",
     price: Number(api.variant?.price) || 0,
+    thumbnail: thumb,
     quantity: api.quantity,
     attributes: normalizeItemAttributes(api.variant?.attributes),
     line_total: api.line_total ?? (Number(api.variant?.price) || 0) * api.quantity,
@@ -93,6 +102,7 @@ function mapToApiItem(item: Omit<CartItem, "line_total" | "name" | "slug" | "sku
     slug: item.slug,
     sku: item.sku,
     price: item.price,
+    thumbnail: item.thumbnail,
     quantity: item.quantity,
     attributes: item.attributes,
   };
@@ -109,7 +119,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const updated = exists
         ? state.items.map((i) =>
             i.variantId === action.item.variantId
-              ? { ...i, quantity: i.quantity + action.item.quantity, line_total: (i.quantity + action.item.quantity) * i.price }
+              ? {
+                  ...i,
+                  quantity: i.quantity + action.item.quantity,
+                  line_total: (i.quantity + action.item.quantity) * i.price,
+                  thumbnail: action.item.thumbnail || i.thumbnail,
+                }
               : i
           )
         : [...state.items, action.item];
@@ -126,7 +141,11 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const updated = exists
         ? state.items.map((i) =>
             i.variantId === action.item.variantId
-              ? { ...action.item, quantity: action.item.quantity || i.quantity }
+              ? {
+                  ...action.item,
+                  quantity: action.item.quantity || i.quantity,
+                  thumbnail: action.item.thumbnail || i.thumbnail,
+                }
               : i
           )
         : [...state.items, action.item];

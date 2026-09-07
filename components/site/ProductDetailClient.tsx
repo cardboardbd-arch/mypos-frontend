@@ -23,6 +23,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { resolveMediaUrl } from "@/lib/media";
 import type {
   ColorOption,
   VariantSummary,
@@ -231,6 +232,15 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
 
   function handleAddToCart() {
     if (!selectedVariant) return;
+    const rawThumb =
+      selectedVariant.image ||
+      selectedImage ||
+      product.featured_image ||
+      (product as any).thumbnail ||
+      product.gallery?.[0]?.image ||
+      null;
+    const thumb = resolveMediaUrl(rawThumb) || rawThumb || undefined;
+
     addToCart(
       {
         id: selectedVariant.id,
@@ -241,7 +251,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         sku: selectedVariant.sku,
         price: selectedVariant.price,
         compare_price: selectedVariant.compare_price ?? undefined,
-        thumbnail: product.featured_image ?? undefined,
+        thumbnail: thumb,
         attributes: attrMap(selectedVariant),
         quantity,
       },
@@ -251,6 +261,15 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
 
   async function handleBuyNow() {
     if (!selectedVariant) return;
+    const rawThumb =
+      selectedVariant.image ||
+      selectedImage ||
+      product.featured_image ||
+      (product as any).thumbnail ||
+      product.gallery?.[0]?.image ||
+      null;
+    const thumb = resolveMediaUrl(rawThumb) || rawThumb || undefined;
+
     await addToCart(
       {
         id: selectedVariant.id,
@@ -261,7 +280,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         sku: selectedVariant.sku,
         price: selectedVariant.price,
         compare_price: selectedVariant.compare_price ?? undefined,
-        thumbnail: product.featured_image ?? undefined,
+        thumbnail: thumb,
         attributes: attrMap(selectedVariant),
         quantity,
       },

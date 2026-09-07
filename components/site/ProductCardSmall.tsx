@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface Props {
   id: number;
@@ -11,13 +12,14 @@ interface Props {
 }
 
 export function ProductCardSmall({ name, slug, price, compare_price, thumbnail }: Props) {
+  const resolved = resolveMediaUrl(thumbnail) || thumbnail;
   return (
     <Link href={`/products/${slug}`}
       className="group block bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition duration-300">
       <div className="aspect-square overflow-hidden bg-gray-50">
-        {thumbnail ? (
+        {resolved ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnail} alt={name}
+          <img src={resolved} alt={name}
             className="h-full w-full object-cover group-hover:scale-105 transition duration-500" />
         ) : (
           <div className="h-full w-full bg-gray-100" />

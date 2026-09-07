@@ -7,6 +7,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { resolveMediaUrl } from "@/lib/media";
 import { ColorSelector } from "@/components/site/ColorSelector";
 import type { ProductCardColorOption } from "@/lib/types/product";
 
@@ -56,6 +57,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
       router.push(`/products/${slug}`);
       return;
     }
+    const resolvedThumbnail = (resolveMediaUrl(thumbnail) || thumbnail) ?? undefined;
     addToCart(
       {
         id: variantId,
@@ -66,7 +68,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
         sku: sku ?? "",
         price,
         compare_price: comparePrice ?? undefined,
-        thumbnail: thumbnail ?? undefined,
+        thumbnail: resolvedThumbnail,
         attributes: color ? { Color: color.name } : {},
         quantity: 1,
       },
@@ -81,6 +83,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
       router.push(`/products/${slug}`);
       return;
     }
+    const resolvedThumbnail = (resolveMediaUrl(thumbnail) || thumbnail) ?? undefined;
     await addToCart(
       {
         id: variantId,
@@ -91,7 +94,7 @@ export function ProductCard({ title, colors }: ProductCardProps) {
         sku: sku ?? "",
         price,
         compare_price: comparePrice ?? undefined,
-        thumbnail: thumbnail ?? undefined,
+        thumbnail: resolvedThumbnail,
         attributes: color ? { Color: color.name } : {},
         quantity: 1,
       },

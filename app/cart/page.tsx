@@ -5,6 +5,7 @@ import { Trash2, Plus, Minus, ShoppingBag, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { formatItemAttributes } from "@/lib/attributes";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function CartPage() {
   const { items, cartCount, cartTotal, loading, error, refreshCart, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -101,9 +102,28 @@ export default function CartPage() {
               {items.map((item) => (
                 <div key={item.variantId} className="bg-white rounded-2xl shadow-sm p-5 flex gap-4 items-center">
                   <div className="w-20 h-20 bg-gray-100 rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
-                    {item.thumbnail
-                      ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
-                      : <span className="text-2xl">📦</span>}
+                    {(() => {
+                      const thumb = resolveMediaUrl(item.thumbnail) || item.thumbnail;
+                      return thumb ? (
+                        <img
+                          src={thumb}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = "none";
+                            const parent = (e.currentTarget as HTMLElement).parentElement;
+                            if (parent && !parent.querySelector(".fallback-box")) {
+                              const span = document.createElement("span");
+                              span.className = "text-2xl fallback-box";
+                              span.innerText = "📦";
+                              parent.appendChild(span);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-2xl">📦</span>
+                      );
+                    })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <Link href={`/products/${item.slug}`} className="text-sm font-black hover:underline line-clamp-1">{item.name}</Link>

@@ -38,13 +38,16 @@ export interface CartItem {
     id: number;
     name: string;
     slug: string;
+    thumbnail?: string | null;
   };
   variant: {
     id: number;
     sku: string;
     price: number;
+    image?: string | null;
     attributes?: Record<string, string>;
   };
+  thumbnail?: string | null;
   line_total: number;
 }
 

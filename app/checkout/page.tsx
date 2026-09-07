@@ -7,6 +7,7 @@ import { ChevronRight, ShieldCheck, Truck, RotateCcw, Tag, ShoppingCart, CheckCi
 import { useCart } from "@/lib/cart";
 import { getAddresses, type CustomerAddress } from "@/lib/auth";
 import { formatItemAttributes } from "@/lib/attributes";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function CheckoutPage() {
   const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart, removeFromCart } = useCart();
@@ -679,9 +680,28 @@ export default function CheckoutPage() {
                         }`}
                       >
                         <div className="w-14 h-14 bg-gray-100 rounded-lg shrink-0 overflow-hidden flex items-center justify-center">
-                          {item.thumbnail
-                            ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
-                            : <span className="text-xl">📦</span>}
+                          {(() => {
+                            const thumb = resolveMediaUrl(item.thumbnail) || item.thumbnail;
+                            return thumb ? (
+                              <img
+                                src={thumb}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                  const parent = (e.currentTarget as HTMLElement).parentElement;
+                                  if (parent && !parent.querySelector(".fallback-box")) {
+                                    const span = document.createElement("span");
+                                    span.className = "text-xl fallback-box";
+                                    span.innerText = "📦";
+                                    parent.appendChild(span);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xl">📦</span>
+                            );
+                          })()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-tight">{item.name}</p>
