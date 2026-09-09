@@ -104,7 +104,10 @@ export default function HomeClient() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
+    const rawBase = process.env.NEXT_PUBLIC_API_URL || "";
+    const apiBase = rawBase.replace(/\/+$/, "");
+
+    fetch(`${apiBase}/v1/home`, {
       headers: { Accept: "application/json" },
     })
       .then((r) => {
@@ -115,7 +118,8 @@ export default function HomeClient() {
         setData(res.data as HomeData);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Failed to load homepage data from API:", `${apiBase}/v1/home`, err);
         setError(true);
         setLoading(false);
       });
