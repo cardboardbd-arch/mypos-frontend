@@ -4,13 +4,40 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Search, Heart, ShoppingBag, User, Menu, X, Package, LogOut } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, Package, LogOut, ChevronDown } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { getToken, logoutCustomer, removeToken } from "@/lib/auth";
 import { resolveMediaUrl } from "@/lib/resolveMediaUrl";
 
+export interface SubSubCategoryItem {
+  id: number;
+  name: string;
+  slug: string;
+  image?: string | null;
+}
 
-interface NavLink { label: string; href: string; }
+export interface SubCategoryItem {
+  id: number;
+  name: string;
+  slug: string;
+  image?: string | null;
+  product_count?: number;
+  children?: SubSubCategoryItem[];
+}
+
+export interface NavLink {
+  label: string;
+  href: string;
+  type?: string;
+  category_id?: number;
+  collection_id?: number;
+  is_mega_menu?: boolean;
+  has_dropdown?: boolean;
+  featured_image?: string | null;
+  badge?: string | null;
+  target?: string;
+  subcategories?: SubCategoryItem[];
+}
 
 interface Props {
   /** From /v1/home's `navigation.links` — omit to have Nav self-fetch it. */
@@ -81,6 +108,9 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
   );
   const [logoError, setLogoError] = useState(false);
 
+  const [expandedMobileMenu, setExpandedMobileMenu] = useState<Record<string, boolean>>({});
+  const [expandedMobileSubMenu, setExpandedMobileSubMenu] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     setIsLoggedIn(!!getToken());
   }, []);
@@ -105,39 +135,38 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
       try { localStorage.setItem(NAME_CACHE_KEY, siteNameProp); } catch {}
     }
 
-    if (navLinksProp !== undefined && logoUrlProp !== undefined && siteNameProp !== undefined) {
-      return;
-    }
-
-    // Always keep navigation, logo, and site name fresh from /v1/home
+    // Always keep navigation, logo, and site name fresh from API so backend changes reflect dynamically
     const apiBase = process.env.NEXT_PUBLIC_API_URL;
     if (!apiBase) return;
 
-    fetch(`${apiBase}/v1/home`, {
+    fetch(`${apiBase}/navigation/header`, {
       headers: { Accept: "application/json" },
+      cache: "no-store",
     })
       .then((r) => r.json())
       .then((res) => {
-        const items = res.data?.navigation?.links;
-        if (items?.length) {
+        const items = res.data;
+        if (Array.isArray(items) && items.length > 0) {
           setNavLinks(items);
           try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
         }
-        const remoteLogo = res.data?.site?.logo || res.data?.theme?.logo;
-        if (remoteLogo) {
-          const resolved = resolveMediaUrl(remoteLogo);
-          setLogoUrl(resolved);
-          setLogoError(false);
-          try {
-            if (resolved) localStorage.setItem(LOGO_CACHE_KEY, resolved);
-          } catch {}
-        }
-        if (res.data?.site?.name) {
-          setSiteName(res.data.site.name);
-          try { localStorage.setItem(NAME_CACHE_KEY, res.data.site.name); } catch {}
-        }
       })
-      .catch(() => {/* keep fallback / cached data */});
+      .catch(() => {
+        // Fallback to /v1/home
+        fetch(`${apiBase}/v1/home`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        })
+          .then((r) => r.json())
+          .then((res) => {
+            const items = res.data?.navigation?.links;
+            if (items?.length) {
+              setNavLinks(items);
+              try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
+            }
+          })
+          .catch(() => {});
+      });
   }, [navLinksProp, logoUrlProp, siteNameProp]);
 
   function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -293,17 +322,89 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
         </div>
       </div>
 
-      {/* ── Bottom nav bar (desktop) ─────────────────────────────────── */}
-      <nav className="hidden lg:flex border-t border-gray-100 h-12 items-center justify-center gap-10">
-        {navLinks.map(({ label, href }) => (
-          <Link
-            key={href}
-            href={href}
-            className="text-sm font-medium hover:text-gray-500 transition-colors"
-          >
-            {label}
-          </Link>
-        ))}
+      {/* ── Bottom nav bar (desktop - Barton Bangladesh Style) ─────── */}
+      <nav className="hidden lg:flex border-t border-gray-100 h-12 items-center justify-center gap-8 px-4 relative">
+        {navLinks.map((link) => {
+          const hasDropdown = Boolean(
+            (link.has_dropdown || link.is_mega_menu) &&
+            link.subcategories &&
+            link.subcategories.length > 0
+          );
+
+          return (
+            <div key={link.href + link.label} className="relative group py-3">
+              <Link
+                href={link.href}
+                target={link.target || "_self"}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-800 hover:text-black transition-colors"
+              >
+                <span>{link.label}</span>
+                {hasDropdown && (
+                  <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-black group-hover:rotate-180 transition-transform duration-200" />
+                )}
+                {link.badge && (
+                  <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white bg-red-600 rounded">
+                    {link.badge}
+                  </span>
+                )}
+              </Link>
+
+              {hasDropdown && link.subcategories && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-1 w-[760px] max-w-[92vw] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none group-hover:pointer-events-auto">
+                  <div className="bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden flex divide-x divide-gray-100 text-left">
+                    {/* Subcategories (2 columns) */}
+                    <div className="flex-1 p-6 grid grid-cols-2 gap-x-8 gap-y-5 max-h-[380px] overflow-y-auto">
+                      {link.subcategories.map((sub) => (
+                        <div key={sub.id || sub.slug} className="space-y-1.5">
+                          <Link
+                            href={`/shop?category=${sub.slug}`}
+                            className="block text-sm font-bold text-gray-900 hover:text-black transition-colors"
+                          >
+                            {sub.name}
+                          </Link>
+                          {sub.children && sub.children.length > 0 && (
+                            <div className="space-y-1 pl-0 mt-1">
+                              {sub.children.map((subsub) => (
+                                <Link
+                                  key={subsub.id || subsub.slug}
+                                  href={`/shop?category=${subsub.slug}`}
+                                  className="block text-xs text-gray-600 hover:text-black transition-colors"
+                                >
+                                  {subsub.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Right side Model / Featured Banner Photo */}
+                    {link.featured_image && (
+                      <div className="w-64 bg-gray-50 p-4 flex flex-col justify-center items-center flex-shrink-0">
+                        <Link
+                          href={link.href}
+                          className="group/img block w-full h-full relative overflow-hidden rounded-lg shadow-sm"
+                        >
+                          <img
+                            src={link.featured_image}
+                            alt={link.label}
+                            className="w-full h-56 object-cover rounded-lg transform group-hover/img:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-90 group-hover/img:opacity-100 transition-opacity flex flex-col justify-end p-3 text-white">
+                            <span className="text-xs font-bold uppercase tracking-wider">{link.label}</span>
+                            <span className="text-[11px] text-gray-200">Explore Collection &rarr;</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* ── Mobile menu ──────────────────────────────────────────────── */}
@@ -326,17 +427,100 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
           </div>
 
           {/* Mobile nav links */}
-          <nav className="flex flex-col px-4 pb-4">
-            {navLinks.map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                className="py-3 text-sm font-medium border-b border-gray-50 last:border-0 hover:text-gray-500 transition-colors"
-              >
-                {label}
-              </Link>
-            ))}
+          <nav className="flex flex-col px-4 pb-4 divide-y divide-gray-50">
+            {navLinks.map((link) => {
+              const hasSub = Boolean(link.subcategories && link.subcategories.length > 0);
+              const isExpanded = Boolean(expandedMobileMenu[link.label]);
+
+              return (
+                <div key={link.href + link.label} className="py-2">
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={link.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="text-sm font-semibold text-gray-800 hover:text-black py-1"
+                    >
+                      {link.label}
+                    </Link>
+                    {hasSub && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedMobileMenu((prev) => ({
+                            ...prev,
+                            [link.label]: !prev[link.label],
+                          }))
+                        }
+                        className="p-1.5 text-gray-400 hover:text-gray-700"
+                        aria-label="Toggle Submenu"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transform transition-transform duration-200 ${
+                            isExpanded ? "rotate-180 text-black" : ""
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {hasSub && isExpanded && link.subcategories && (
+                    <div className="pl-4 pr-1 py-2 space-y-3 bg-gray-50/50 rounded-lg mt-1">
+                      {link.subcategories.map((sub) => {
+                        const hasSubSub = Boolean(sub.children && sub.children.length > 0);
+                        const isSubExpanded = Boolean(expandedMobileSubMenu[sub.name]);
+
+                        return (
+                          <div key={sub.id || sub.slug} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <Link
+                                href={`/shop?category=${sub.slug}`}
+                                onClick={() => setMobileOpen(false)}
+                                className="text-xs font-bold text-gray-900 hover:text-black"
+                              >
+                                {sub.name}
+                              </Link>
+                              {hasSubSub && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpandedMobileSubMenu((prev) => ({
+                                      ...prev,
+                                      [sub.name]: !prev[sub.name],
+                                    }))
+                                  }
+                                  className="p-1 text-gray-400"
+                                >
+                                  <ChevronDown
+                                    className={`h-3 w-3 transform transition-transform duration-200 ${
+                                      isSubExpanded ? "rotate-180 text-black" : ""
+                                    }`}
+                                  />
+                                </button>
+                              )}
+                            </div>
+
+                            {hasSubSub && isSubExpanded && sub.children && (
+                              <div className="pl-3 space-y-1">
+                                {sub.children.map((subsub) => (
+                                  <Link
+                                    key={subsub.id || subsub.slug}
+                                    href={`/shop?category=${subsub.slug}`}
+                                    onClick={() => setMobileOpen(false)}
+                                    className="block text-xs text-gray-600 hover:text-black py-0.5"
+                                  >
+                                    {subsub.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
         </div>
       )}
