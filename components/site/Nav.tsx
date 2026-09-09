@@ -136,37 +136,32 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
     }
 
     // Always keep navigation, logo, and site name fresh from API so backend changes reflect dynamically
-    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    const rawBase = process.env.NEXT_PUBLIC_API_URL || "";
+    const apiBase = rawBase.replace(/\/+$/, "");
     if (!apiBase) return;
 
-    fetch(`${apiBase}/navigation/header`, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    })
-      .then((r) => r.json())
+    const t = Date.now();
+    const tryFetch = (url: string) =>
+      fetch(`${url}?t=${t}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      }).then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      });
+
+    // Try dedicated navigation endpoints first, fallback to v1/home
+    tryFetch(`${apiBase}/v1/navigation/header`)
+      .catch(() => tryFetch(`${apiBase}/navigation/header`))
+      .catch(() => tryFetch(`${apiBase}/v1/home`))
       .then((res) => {
-        const items = res.data;
+        const items = res?.data?.navigation?.links || res?.data;
         if (Array.isArray(items) && items.length > 0) {
           setNavLinks(items);
           try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
         }
       })
-      .catch(() => {
-        // Fallback to /v1/home
-        fetch(`${apiBase}/v1/home`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        })
-          .then((r) => r.json())
-          .then((res) => {
-            const items = res.data?.navigation?.links;
-            if (items?.length) {
-              setNavLinks(items);
-              try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
-            }
-          })
-          .catch(() => {});
-      });
+      .catch(() => {});
   }, [navLinksProp, logoUrlProp, siteNameProp]);
 
   function handleSearch(e: React.SyntheticEvent<HTMLFormElement>) {
