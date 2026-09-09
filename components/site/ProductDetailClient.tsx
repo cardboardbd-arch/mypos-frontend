@@ -380,7 +380,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         />
       )}
 
-      <div className="max-w-[1280px] mx-auto px-4 md:px-6 lg:px-8 py-5">
+      <div className="max-w-[1360px] mx-auto px-4 md:px-6 lg:px-8 py-5">
 
         {/* Breadcrumb */}
         <nav className="flex items-center flex-wrap gap-1 text-xs text-gray-400 mb-5">
@@ -402,13 +402,13 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         </nav>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-start">
 
           {/* LEFT: Images */}
-          <div className="flex gap-3">
+          <div className="lg:col-span-7 xl:col-span-7 flex gap-3 sm:gap-4">
             {images.length > 0 && (
               <div
-                className="flex flex-col items-center gap-2 w-[100px] sm:w-[115px] md:w-[125px] lg:w-[130px] shrink-0 select-none"
+                className="flex flex-col items-center gap-2 w-[90px] sm:w-[105px] md:w-[115px] lg:w-[120px] shrink-0 select-none"
                 onWheel={(e) => {
                   if (images.length <= VISIBLE_THUMBS) return;
                   if (e.deltaY > 0) {
@@ -532,7 +532,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
           </div>
 
           {/* RIGHT: Info */}
-          <div className="flex flex-col gap-4">
+          <div className="lg:col-span-5 xl:col-span-5 flex flex-col gap-4">
 
             {/* Stock + SKU */}
             <div className="flex items-center justify-between">
