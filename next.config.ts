@@ -24,6 +24,27 @@ const nextConfig: NextConfig = {
   },
   // Compress static assets.
   compress: true,
+
+  async rewrites() {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.marvelouslifestyle.com/api";
+    let apiOrigin = "https://api.marvelouslifestyle.com";
+    try {
+      apiOrigin = new URL(apiBase).origin;
+    } catch {
+      apiOrigin = "https://api.marvelouslifestyle.com";
+    }
+
+    return [
+      {
+        source: "/curator/:path*",
+        destination: `${apiOrigin}/curator/:path*`,
+      },
+      {
+        source: "/storage/:path*",
+        destination: `${apiOrigin}/storage/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
