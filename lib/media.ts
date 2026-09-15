@@ -7,10 +7,16 @@
 export function resolveMediaUrl(path?: string | null): string | null {
   if (!path) return null;
 
-  // If the path contains api.marvelouslifestyle.com, strip it to route through the storefront
-  if (path.includes("api.marvelouslifestyle.com/curator/") || path.includes("api.marvelouslifestyle.com/storage/")) {
-    path = path.replace(/https?:\/\/api\.marvelouslifestyle\.com/, "");
-  }
+  // If the path contains the API backend origin or legacy api/backend subdomains, strip it to route through the storefront
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
+  try {
+    const apiOrigin = new URL(apiBase).origin;
+    if (path.startsWith(apiOrigin)) {
+      path = path.replace(apiOrigin, "");
+    }
+  } catch {}
+
+  path = path.replace(/^https?:\/\/(?:api|backend)\.marvelouslifestyle\.com/, "");
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
 
