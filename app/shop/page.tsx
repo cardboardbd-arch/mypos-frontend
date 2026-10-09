@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { ProductCard } from "@/components/site/ProductCard";
@@ -57,22 +58,24 @@ function FilterPanel({
           <ChevronDown className="h-4 w-4 text-gray-400" />
         </div>
         <div className="p-3 space-y-1 bg-white max-h-56 overflow-y-auto">
-          <button
+          <Link
+            href="/shop"
             onClick={() => { setSelectedCategory(""); onClose?.(); }}
-            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition font-medium
+            className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition font-medium
               ${!selectedCategory ? "bg-black text-white" : "hover:bg-gray-50 text-gray-700"}`}
           >
             All Categories
-          </button>
+          </Link>
           {categories.map((c) => (
-            <button
+            <Link
               key={c.id}
-              onClick={() => { setSelectedCategory(c.slug); onClose?.(); }}
-              className={`w-full text-left px-3 py-2 text-sm rounded-lg transition
+              href={`/category/${c.slug}`}
+              onClick={onClose}
+              className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition
                 ${selectedCategory === c.slug ? "bg-black text-white font-medium" : "hover:bg-gray-50 text-gray-600"}`}
             >
               {c.name}
-            </button>
+            </Link>
           ))}
         </div>
       </div>
@@ -130,6 +133,7 @@ function FilterPanel({
 }
 
 function ShopContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [browseCards, setBrowseCards] = useState<WebsiteProductCard[]>([]);
   const [searchResults, setSearchResults] = useState<LegacyProductCard[]>([]);
@@ -209,8 +213,25 @@ function ShopContent() {
     return browseCards.map((card) => ({ productId: card.id, title: card.title, colors: [toColorOption(card)] }));
   }, [isSearchMode, searchResults, browseCards, displayMode]);
 
-  const clearFilters = () => { setSearch(""); setSelectedCategory(""); setSelectedBrand(""); setSortBy("newest"); };
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedCategory("");
+    setSelectedBrand("");
+    setSortBy("newest");
+    router.replace("/shop", { scroll: false });
+  };
   const hasFilters = !!(search || selectedCategory || selectedBrand);
+
+  const activeCategory = categories.find((c) => c.slug === selectedCategory);
+  const activeBrand = brands.find((b) => b.slug === selectedBrand);
+
+  const pageTitle = activeCategory
+    ? activeCategory.name
+    : activeBrand
+    ? activeBrand.name
+    : search
+    ? `Search: "${search}"`
+    : "Shop";
 
   const filterProps = { search, setSearch, selectedCategory, setSelectedCategory, selectedBrand, setSelectedBrand, categories, brands, hasFilters, clearFilters };
 
@@ -222,10 +243,37 @@ function ShopContent() {
       <div className="bg-gray-50 border-b border-gray-100 py-6">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-10 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight">Shop</h1>
-            <p className="text-xs text-gray-400 mt-1">
-              {loading ? "Loading…" : `${renderCards.length} products found`}
-            </p>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black uppercase tracking-tight">{pageTitle}</h1>
+              {activeCategory && (
+                <Link
+                  href={`/category/${activeCategory.slug}`}
+                  className="hidden sm:inline-flex items-center text-xs font-bold text-gray-500 hover:text-black underline transition"
+                >
+                  View Category Page &rarr;
+                </Link>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
+              <Link href="/" className="hover:text-black">Home</Link>
+              <span>/</span>
+              <Link href="/shop" className="hover:text-black">Shop</Link>
+              {activeCategory && (
+                <>
+                  <span>/</span>
+                  <span className="text-gray-900 font-medium">{activeCategory.name}</span>
+                </>
+              )}
+              {activeBrand && (
+                <>
+                  <span>/</span>
+                  <span className="text-gray-900 font-medium">{activeBrand.name}</span>
+                </>
+              )}
+              <span className="ml-2 text-gray-400">
+                ({loading ? "Loading…" : `${renderCards.length} products found`})
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Mobile filter button — only visible below lg */}
@@ -297,20 +345,53 @@ function ShopContent() {
                 <div className="flex flex-wrap gap-2 mb-4">
                   {selectedCategory && (
                     <span className="flex items-center gap-1 bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                      {categories.find((c) => c.slug === selectedCategory)?.name ?? selectedCategory}
-                      <button onClick={() => setSelectedCategory("")}><X className="h-3 w-3" /></button>
+                      {activeCategory?.name ?? selectedCategory}
+                      <button
+                        onClick={() => {
+                          setSelectedCategory("");
+                          const p = new URLSearchParams(window.location.search);
+                          p.delete("category");
+                          const qs = p.toString();
+                          router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+                        }}
+                        aria-label="Remove category filter"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </span>
                   )}
                   {selectedBrand && (
                     <span className="flex items-center gap-1 bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                      {brands.find((b) => b.slug === selectedBrand)?.name ?? selectedBrand}
-                      <button onClick={() => setSelectedBrand("")}><X className="h-3 w-3" /></button>
+                      {activeBrand?.name ?? selectedBrand}
+                      <button
+                        onClick={() => {
+                          setSelectedBrand("");
+                          const p = new URLSearchParams(window.location.search);
+                          p.delete("brand");
+                          const qs = p.toString();
+                          router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+                        }}
+                        aria-label="Remove brand filter"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </span>
                   )}
                   {search && (
                     <span className="flex items-center gap-1 bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full">
                       &quot;{search}&quot;
-                      <button onClick={() => setSearch("")}><X className="h-3 w-3" /></button>
+                      <button
+                        onClick={() => {
+                          setSearch("");
+                          const p = new URLSearchParams(window.location.search);
+                          p.delete("q");
+                          const qs = p.toString();
+                          router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+                        }}
+                        aria-label="Remove search query"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </span>
                   )}
                 </div>

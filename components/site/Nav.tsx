@@ -62,11 +62,59 @@ const NAV_CACHE_KEY = "pos_site_nav_links";
 const LOGO_CACHE_KEY = "pos_site_logo_url";
 const NAME_CACHE_KEY = "pos_site_name";
 
+export function deduplicateNavLinks(links: NavLink[]): NavLink[] {
+  if (!Array.isArray(links)) return [];
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    if (!link || !link.label) return false;
+    const catId = link.category_id;
+    const colId = link.collection_id;
+    const key = catId
+      ? `cat_${catId}`
+      : colId
+      ? `col_${colId}`
+      : `custom_${link.label.trim().toLowerCase()}_${(link.href || "").trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function normalizeNavHref(link: NavLink): string {
+  let href = (link.href || "").trim();
+  href = href.replace(/^https?:\/\/[^\/]+/, "");
+  href = href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/");
+
+  if (link.type === "category" || link.category_id) {
+    if (!href.startsWith("/category/") && !href.startsWith("http")) {
+      const slug = (link.label || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return `/category/${slug || "all"}`;
+    }
+  }
+
+  if (link.type === "collection" || link.collection_id) {
+    if (!href.startsWith("/collections/") && !href.startsWith("http")) {
+      const slug = (link.label || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return `/collections/${slug || "all"}`;
+    }
+  }
+
+  return href || "/shop";
+}
+
 function getStoredNav(): NavLink[] {
   if (typeof window === "undefined") return FALLBACK_NAV;
   try {
     const raw = localStorage.getItem(NAV_CACHE_KEY);
-    return raw ? JSON.parse(raw) : FALLBACK_NAV;
+    return raw ? deduplicateNavLinks(JSON.parse(raw)) : FALLBACK_NAV;
   } catch {
     return FALLBACK_NAV;
   }
@@ -98,7 +146,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [navLinks, setNavLinks] = useState<NavLink[]>(() =>
-    navLinksProp?.length ? navLinksProp : getStoredNav()
+    navLinksProp?.length ? deduplicateNavLinks(navLinksProp) : getStoredNav()
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(() =>
     logoUrlProp ? resolveMediaUrl(logoUrlProp) : getStoredLogo()
@@ -165,8 +213,9 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
           ? res.data.navigation.links
           : [];
         if (items.length > 0) {
-          setNavLinks(items);
-          try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
+          const deduped = deduplicateNavLinks(items);
+          setNavLinks(deduped);
+          try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(deduped)); } catch {}
         }
       })
       .catch(() => {});
@@ -333,11 +382,12 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
             link.subcategories &&
             link.subcategories.length > 0
           );
+          const topHref = normalizeNavHref(link);
 
           return (
-            <div key={link.href + link.label} className="relative group py-3">
+            <div key={topHref + link.label} className="relative group py-3">
               <Link
-                href={link.href}
+                href={topHref}
                 target={link.target || "_self"}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-800 hover:text-black transition-colors"
               >
@@ -398,7 +448,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
                     {link.featured_image && (
                       <div className="w-64 bg-gray-50 p-4 flex flex-col justify-center items-center flex-shrink-0">
                         <Link
-                          href={link.href}
+                          href={topHref}
                           className="group/img block w-full h-full relative overflow-hidden rounded-lg shadow-sm"
                         >
                           <img
@@ -446,12 +496,13 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
             {navLinks.map((link) => {
               const hasSub = Boolean(link.subcategories && link.subcategories.length > 0);
               const isExpanded = Boolean(expandedMobileMenu[link.label]);
+              const topHref = normalizeNavHref(link);
 
               return (
-                <div key={link.href + link.label} className="py-2">
+                <div key={topHref + link.label} className="py-2">
                   <div className="flex items-center justify-between">
                     <Link
-                      href={link.href}
+                      href={topHref}
                       onClick={() => setMobileOpen(false)}
                       className="text-sm font-semibold text-gray-800 hover:text-black py-1"
                     >
