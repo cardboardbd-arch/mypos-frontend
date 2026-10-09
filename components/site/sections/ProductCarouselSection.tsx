@@ -13,6 +13,11 @@ export function ProductCarouselSection({ section }: Props) {
   const products = section.products ?? [];
   if (products.length === 0) return null;
 
+  const rawViewAll = section.view_all_link
+    ? section.view_all_link.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+    : null;
+  const viewAllLink = rawViewAll || (section.category_slug ? `/category/${section.category_slug}` : undefined);
+
   return (
     <section className="w-full">
       <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -24,9 +29,9 @@ export function ProductCarouselSection({ section }: Props) {
             <p className="text-xs text-gray-400 mt-0.5">{section.subtitle}</p>
           )}
         </div>
-        {section.view_all_link && (
+        {viewAllLink && (
           <Link
-            href={section.view_all_link}
+            href={viewAllLink}
             className="text-sm font-medium text-gray-500 hover:text-black transition shrink-0"
           >
             View All →
