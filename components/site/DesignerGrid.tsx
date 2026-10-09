@@ -30,13 +30,13 @@ const FALLBACK_SECTIONS: Section[] = [
     title: "Designer Polo",
     category_slug: "mens-fashion",
     image: "https://images.unsplash.com/photo-1618932260643-eee4a2f652a6?w=600&q=80",
-    view_all_link: "/categories/mens-fashion",
+    view_all_link: "/category/mens-fashion",
   },
   {
     title: "Kurti, Tunic & Tops",
     category_slug: "womens-fashion",
     image: "https://images.unsplash.com/photo-1594938298603-c8148c4f8c4f?w=600&q=80",
-    view_all_link: "/categories/womens-fashion",
+    view_all_link: "/category/womens-fashion",
   },
 ];
 
@@ -67,12 +67,15 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
       setSections(
         sectionsProp
           .filter((s) => RENDERABLE_TYPES.has(s.type ?? ""))
-          .map((s) => ({
-            title: s.title,
-            category_slug: s.category_slug,
-            image: resolveMediaUrl(s.image) ?? "",
-            view_all_link: s.view_all_link ?? `/categories/${s.category_slug}`,
-          }))
+          .map((s) => {
+            const rawView = s.view_all_link ? s.view_all_link.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/") : null;
+            return {
+              title: s.title,
+              category_slug: s.category_slug,
+              image: resolveMediaUrl(s.image) ?? "",
+              view_all_link: rawView || (s.category_slug ? `/category/${s.category_slug}` : "/shop"),
+            };
+          })
       );
       return;
     }
@@ -83,12 +86,15 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
       .then((res) => {
         if (res.data?.length) {
           setSections(
-            res.data.map((s: any) => ({
-              title: s.title,
-              category_slug: s.category_slug,
-              image: resolveMediaUrl(s.image) ?? "",
-              view_all_link: s.view_all_link ?? `/categories/${s.category_slug}`,
-            }))
+            res.data.map((s: any) => {
+              const rawView = s.view_all_link ? s.view_all_link.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/") : null;
+              return {
+                title: s.title,
+                category_slug: s.category_slug,
+                image: resolveMediaUrl(s.image) ?? "",
+                view_all_link: rawView || (s.category_slug ? `/category/${s.category_slug}` : "/shop"),
+              };
+            })
           );
         }
       })

@@ -357,29 +357,41 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
                   <div className="bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden flex divide-x divide-gray-100 text-left">
                     {/* Subcategories (2 columns) */}
                     <div className="flex-1 p-6 grid grid-cols-2 gap-x-8 gap-y-5 max-h-[380px] overflow-y-auto">
-                      {link.subcategories.map((sub: any) => (
-                        <div key={sub.id || sub.slug} className="space-y-1.5">
-                          <Link
-                            href={sub.href || `/categories/${sub.slug}`}
-                            className="block text-sm font-bold text-gray-900 hover:text-black transition-colors"
-                          >
-                            {sub.name}
-                          </Link>
-                          {sub.children && sub.children.length > 0 && (
-                            <div className="space-y-1 pl-0 mt-1">
-                              {sub.children.map((subsub: any) => (
-                                <Link
-                                  key={subsub.id || subsub.slug}
-                                  href={subsub.href || `/categories/${subsub.slug}`}
-                                  className="block text-xs text-gray-600 hover:text-black transition-colors"
-                                >
-                                  {subsub.name}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                      {link.subcategories.map((sub: any) => {
+                        const subHref = sub.href
+                          ? sub.href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+                          : `/category/${sub.slug}`;
+
+                        return (
+                          <div key={sub.id || sub.slug} className="space-y-1.5">
+                            <Link
+                              href={subHref}
+                              className="block text-sm font-bold text-gray-900 hover:text-black transition-colors"
+                            >
+                              {sub.name}
+                            </Link>
+                            {sub.children && sub.children.length > 0 && (
+                              <div className="space-y-1 pl-0 mt-1">
+                                {sub.children.map((subsub: any) => {
+                                  const subsubHref = (subsub as any).href
+                                    ? (subsub as any).href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+                                    : `/category/${subsub.slug}`;
+
+                                  return (
+                                    <Link
+                                      key={subsub.id || subsub.slug}
+                                      href={subsubHref}
+                                      className="block text-xs text-gray-600 hover:text-black transition-colors"
+                                    >
+                                      {subsub.name}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Right side Model / Featured Banner Photo */}
@@ -472,11 +484,15 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
                         const hasSubSub = Boolean(sub.children && sub.children.length > 0);
                         const isSubExpanded = Boolean(expandedMobileSubMenu[sub.name]);
 
+                        const subHref = sub.href
+                          ? sub.href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+                          : `/category/${sub.slug}`;
+
                         return (
                           <div key={sub.id || sub.slug} className="space-y-1">
                             <div className="flex items-center justify-between">
                               <Link
-                                href={sub.href || `/categories/${sub.slug}`}
+                                href={subHref}
                                 onClick={() => setMobileOpen(false)}
                                 className="text-xs font-bold text-gray-900 hover:text-black"
                               >
@@ -504,16 +520,22 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
 
                             {hasSubSub && isSubExpanded && sub.children && (
                               <div className="pl-3 space-y-1">
-                                {sub.children.map((subsub: any) => (
-                                  <Link
-                                    key={subsub.id || subsub.slug}
-                                    href={subsub.href || `/categories/${subsub.slug}`}
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block text-xs text-gray-600 hover:text-black py-0.5"
-                                  >
-                                    {subsub.name}
-                                  </Link>
-                                ))}
+                                {sub.children.map((subsub: any) => {
+                                  const subsubHref = (subsub as any).href
+                                    ? (subsub as any).href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+                                    : `/category/${subsub.slug}`;
+
+                                  return (
+                                    <Link
+                                      key={subsub.id || subsub.slug}
+                                      href={subsubHref}
+                                      onClick={() => setMobileOpen(false)}
+                                      className="block text-xs text-gray-600 hover:text-black py-0.5"
+                                    >
+                                      {subsub.name}
+                                    </Link>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>

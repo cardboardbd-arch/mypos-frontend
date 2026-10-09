@@ -35,7 +35,9 @@ export function CategoryShowcaseSection({ section }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
         {items.map((item, i) => {
           const image = resolveMediaUrl(item.image);
-          const href = (item as any).href || (item.slug ? `/categories/${item.slug}` : undefined);
+          const href = (item as any).href
+            ? (item as any).href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+            : (item.slug ? `/category/${item.slug}` : undefined);
           const label = item.label ?? "";
 
           const card = (

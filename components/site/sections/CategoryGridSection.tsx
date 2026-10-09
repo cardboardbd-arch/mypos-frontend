@@ -31,10 +31,14 @@ export function CategoryGridSection({ section }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-[10px]">
         {items.map((cat) => {
           const image = resolveMediaUrl(cat.image);
+          const categoryHref = (cat as any).href
+            ? (cat as any).href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
+            : `/category/${cat.slug}`;
+
           return (
           <Link
             key={cat.id}
-            href={(cat as any).href || `/categories/${cat.slug}`}
+            href={categoryHref}
             className="group relative aspect-[16/10] rounded-2xl overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow duration-300"
           >
             {image ? (

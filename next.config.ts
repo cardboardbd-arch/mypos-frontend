@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
   // Compress static assets.
   compress: true,
 
+  async redirects() {
+    return [
+      {
+        source: "/categories/:slug",
+        destination: "/category/:slug",
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.marvelouslifestyle.com/api";
     let apiOrigin = "https://api.marvelouslifestyle.com";

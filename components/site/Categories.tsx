@@ -87,7 +87,7 @@ export function Categories({ categories: categoriesProp }: Props) {
               transition={{ duration: 0.4, delay: i * 0.08 }}
             >
               <Link
-                href={(cat as any).href || `/categories/${cat.slug}`}
+                href={(cat as any).href ? (cat as any).href.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/") : `/category/${cat.slug}`}
                 className="group block relative aspect-[16/10] rounded-2xl overflow-hidden hover:shadow-lg transition-shadow"
               >
               {img ? (

@@ -48,7 +48,7 @@ export function CategoryBanner({ banners: bannersProp }: Props) {
           : banners.map((b, i) => (
               <Link
                 key={i}
-                href={b.link ?? `/categories/${b.slug}`}
+                href={b.link ? b.link.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/") : `/category/${b.slug}`}
                 className="group relative overflow-hidden rounded-2xl bg-gray-100"
                 style={{ aspectRatio: "3/4" }}
               >
