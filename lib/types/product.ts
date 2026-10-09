@@ -134,6 +134,7 @@ export interface WebsiteProductDetail {
   highlights: Array<{ text: string }> | null;
   care_instructions: string | null;
   size_guide: string | null;
+  size_guide_image?: string | null;
 
   category: CategoryRef | null;
   brand: BrandRef | null;

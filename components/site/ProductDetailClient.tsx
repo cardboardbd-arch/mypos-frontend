@@ -621,7 +621,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                   <p className="text-sm font-semibold text-gray-700">
                     {attributeName}: <span className="font-normal text-gray-500">{selectedAttrs[attributeName] ?? "—"}</span>
                   </p>
-                  {attributeName.toLowerCase() === "size" && product.size_guide && (
+                  {attributeName.toLowerCase().includes("size") && (product.size_guide || product.size_guide_image) && (
                     <button
                       type="button"
                       onClick={() => setShowSizeGuide(true)}
@@ -655,6 +655,20 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                 </div>
               </div>
             ))}
+
+            {/* Fallback Size Guide Button if product has size guide but no "size" attribute group */}
+            {!Object.keys(attributeGroups).some((k) => k.toLowerCase().includes("size")) &&
+              (product.size_guide || product.size_guide_image) && (
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeGuide(true)}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 font-medium transition cursor-pointer"
+                  >
+                    <RulerIcon className="h-3.5 w-3.5" /> View Size Guide
+                  </button>
+                </div>
+              )}
 
             {/* Quantity */}
             <div>
@@ -913,14 +927,14 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         </div>
 
         {/* Size Guide Modal */}
-        {showSizeGuide && product.size_guide && (
+        {showSizeGuide && (product.size_guide || product.size_guide_image) && (
           <div
             className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowSizeGuide(false);
             }}
           >
-            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <RulerIcon className="h-5 w-5 text-gray-700" />
@@ -937,10 +951,24 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
                 </button>
               </div>
 
-              <div
-                className="prose prose-sm max-w-none py-4 text-gray-700 leading-relaxed overflow-x-auto"
-                dangerouslySetInnerHTML={{ __html: product.size_guide }}
-              />
+              <div className="py-4 space-y-4">
+                {product.size_guide_image && (
+                  <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center p-2">
+                    <img
+                      src={resolveMediaUrl(product.size_guide_image) || product.size_guide_image}
+                      alt={product.category?.name ? `${product.category.name} Size Guide` : "Size Guide"}
+                      className="w-full h-auto object-contain max-h-[60vh] rounded-lg"
+                    />
+                  </div>
+                )}
+
+                {product.size_guide && (
+                  <div
+                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed overflow-x-auto"
+                    dangerouslySetInnerHTML={{ __html: product.size_guide }}
+                  />
+                )}
+              </div>
 
               <div className="pt-3 border-t border-gray-100 flex justify-end">
                 <button
