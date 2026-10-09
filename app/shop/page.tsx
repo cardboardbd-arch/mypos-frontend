@@ -148,6 +148,12 @@ function ShopContent() {
   const BASE = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
+    setSelectedCategory(searchParams.get("category") ?? "");
+    setSelectedBrand(searchParams.get("brand") ?? "");
+    setSearch(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
     fetch(`${BASE}/v1/categories`, { headers: { Accept: "application/json" } })
       .then((r) => r.json())
       .then((d) => setCategories(d.data ?? []))

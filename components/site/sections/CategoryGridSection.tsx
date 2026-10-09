@@ -34,7 +34,7 @@ export function CategoryGridSection({ section }: Props) {
           return (
           <Link
             key={cat.id}
-            href={`/shop?category=${cat.slug}`}
+            href={(cat as any).href || `/categories/${cat.slug}`}
             className="group relative aspect-[16/10] rounded-2xl overflow-hidden bg-gray-100 hover:shadow-lg transition-shadow duration-300"
           >
             {image ? (

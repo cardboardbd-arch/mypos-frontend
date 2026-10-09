@@ -14,7 +14,7 @@ export function DesignerGridSection({ section }: Props) {
   const config = (section.config ?? {}) as Record<string, any>;
   const image = resolveMediaUrl(section.image) ?? resolveMediaUrl(config.banner_image);
   const buttonText = section.button_text || config.button_text || "Shop Now →";
-  const viewAllLink = section.view_all_link || (section.category_slug ? `/shop?category=${section.category_slug}` : "/shop");
+  const viewAllLink = section.view_all_link || (section.category_slug ? `/categories/${section.category_slug}` : "/shop");
 
   if (products.length === 0 && !image) {
     return null;

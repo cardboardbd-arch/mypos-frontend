@@ -30,13 +30,13 @@ const FALLBACK_SECTIONS: Section[] = [
     title: "Designer Polo",
     category_slug: "mens-fashion",
     image: "https://images.unsplash.com/photo-1618932260643-eee4a2f652a6?w=600&q=80",
-    view_all_link: "/shop?category=mens-fashion",
+    view_all_link: "/categories/mens-fashion",
   },
   {
     title: "Kurti, Tunic & Tops",
     category_slug: "womens-fashion",
     image: "https://images.unsplash.com/photo-1594938298603-c8148c4f8c4f?w=600&q=80",
-    view_all_link: "/shop?category=womens-fashion",
+    view_all_link: "/categories/womens-fashion",
   },
 ];
 
@@ -71,7 +71,7 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
             title: s.title,
             category_slug: s.category_slug,
             image: resolveMediaUrl(s.image) ?? "",
-            view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
+            view_all_link: s.view_all_link ?? `/categories/${s.category_slug}`,
           }))
       );
       return;
@@ -87,7 +87,7 @@ export function DesignerGrid({ sections: sectionsProp, products: productsProp }:
               title: s.title,
               category_slug: s.category_slug,
               image: resolveMediaUrl(s.image) ?? "",
-              view_all_link: s.view_all_link ?? `/shop?category=${s.category_slug}`,
+              view_all_link: s.view_all_link ?? `/categories/${s.category_slug}`,
             }))
           );
         }

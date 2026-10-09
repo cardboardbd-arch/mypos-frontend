@@ -155,8 +155,16 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
       .catch(() => tryFetch(`${apiBase}/navigation/header`))
       .catch(() => tryFetch(`${apiBase}/v1/home`))
       .then((res) => {
-        const items = res?.data?.navigation?.links || res?.data;
-        if (Array.isArray(items) && items.length > 0) {
+        const items = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.links)
+          ? res.data.links
+          : Array.isArray(res?.links)
+          ? res.links
+          : Array.isArray(res?.data?.navigation?.links)
+          ? res.data.navigation.links
+          : [];
+        if (items.length > 0) {
           setNavLinks(items);
           try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(items)); } catch {}
         }
@@ -349,20 +357,20 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
                   <div className="bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden flex divide-x divide-gray-100 text-left">
                     {/* Subcategories (2 columns) */}
                     <div className="flex-1 p-6 grid grid-cols-2 gap-x-8 gap-y-5 max-h-[380px] overflow-y-auto">
-                      {link.subcategories.map((sub) => (
+                      {link.subcategories.map((sub: any) => (
                         <div key={sub.id || sub.slug} className="space-y-1.5">
                           <Link
-                            href={`/shop?category=${sub.slug}`}
+                            href={sub.href || `/categories/${sub.slug}`}
                             className="block text-sm font-bold text-gray-900 hover:text-black transition-colors"
                           >
                             {sub.name}
                           </Link>
                           {sub.children && sub.children.length > 0 && (
                             <div className="space-y-1 pl-0 mt-1">
-                              {sub.children.map((subsub) => (
+                              {sub.children.map((subsub: any) => (
                                 <Link
                                   key={subsub.id || subsub.slug}
-                                  href={`/shop?category=${subsub.slug}`}
+                                  href={subsub.href || `/categories/${subsub.slug}`}
                                   className="block text-xs text-gray-600 hover:text-black transition-colors"
                                 >
                                   {subsub.name}
@@ -460,7 +468,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
 
                   {hasSub && isExpanded && link.subcategories && (
                     <div className="pl-4 pr-1 py-2 space-y-3 bg-gray-50/50 rounded-lg mt-1">
-                      {link.subcategories.map((sub) => {
+                      {link.subcategories.map((sub: any) => {
                         const hasSubSub = Boolean(sub.children && sub.children.length > 0);
                         const isSubExpanded = Boolean(expandedMobileSubMenu[sub.name]);
 
@@ -468,7 +476,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
                           <div key={sub.id || sub.slug} className="space-y-1">
                             <div className="flex items-center justify-between">
                               <Link
-                                href={`/shop?category=${sub.slug}`}
+                                href={sub.href || `/categories/${sub.slug}`}
                                 onClick={() => setMobileOpen(false)}
                                 className="text-xs font-bold text-gray-900 hover:text-black"
                               >
@@ -496,10 +504,10 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
 
                             {hasSubSub && isSubExpanded && sub.children && (
                               <div className="pl-3 space-y-1">
-                                {sub.children.map((subsub) => (
+                                {sub.children.map((subsub: any) => (
                                   <Link
                                     key={subsub.id || subsub.slug}
-                                    href={`/shop?category=${subsub.slug}`}
+                                    href={subsub.href || `/categories/${subsub.slug}`}
                                     onClick={() => setMobileOpen(false)}
                                     className="block text-xs text-gray-600 hover:text-black py-0.5"
                                   >

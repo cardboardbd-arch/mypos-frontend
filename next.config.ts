@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
 
     return [
       {
+        source: "/categories/:slug",
+        destination: "/category/:slug",
+      },
+      {
         source: "/curator/:path*",
         destination: `${apiOrigin}/curator/:path*`,
       },
