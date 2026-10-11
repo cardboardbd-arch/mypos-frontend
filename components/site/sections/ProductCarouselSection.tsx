@@ -13,10 +13,14 @@ export function ProductCarouselSection({ section }: Props) {
   const products = section.products ?? [];
   if (products.length === 0) return null;
 
-  const rawViewAll = section.view_all_link
-    ? section.view_all_link.replace(/^\/categories\//, "/category/").replace(/^\/shop\?category=/, "/category/")
-    : null;
-  const viewAllLink = rawViewAll || (section.category_slug ? `/category/${section.category_slug}` : undefined);
+  const layout = (section.config as Record<string, any>)?.layout ?? {};
+  const columns = Number(layout.columns ?? 5);
+  const rows = Number(layout.rows ?? 2);
+  const maxProducts = columns * rows; // e.g. 5 columns * 2 rows = 10 products
+  const displayProducts = products.slice(0, maxProducts);
+
+  // Map columns to tailwind desktop grid classes
+  const gridColsClass = matchColumns(columns);
 
   return (
     <section className="w-full">
@@ -29,9 +33,9 @@ export function ProductCarouselSection({ section }: Props) {
             <p className="text-xs text-gray-400 mt-0.5">{section.subtitle}</p>
           )}
         </div>
-        {viewAllLink && (
+        {section.view_all_link && (
           <Link
-            href={viewAllLink}
+            href={section.view_all_link}
             className="text-sm font-medium text-gray-500 hover:text-black transition shrink-0"
           >
             View All →
@@ -39,8 +43,8 @@ export function ProductCarouselSection({ section }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[10px]">
-        {products.map((p) => {
+      <div className={`grid grid-cols-2 md:grid-cols-3 ${gridColsClass} gap-[10px]`}>
+        {displayProducts.map((p) => {
           // WebsiteProductCardResource (HomepageService::homepageSections())
           // sends `title`, not the older ProductCardResource's `name` —
           // legacyToColorOption() only needs a display name, so it's
@@ -57,6 +61,22 @@ export function ProductCarouselSection({ section }: Props) {
       </div>
     </section>
   );
+}
+
+function matchColumns(cols: number): string {
+  switch (cols) {
+    case 2:
+      return "lg:grid-cols-2";
+    case 3:
+      return "lg:grid-cols-3";
+    case 4:
+      return "lg:grid-cols-4";
+    case 6:
+      return "lg:grid-cols-6";
+    case 5:
+    default:
+      return "lg:grid-cols-5";
+  }
 }
 
 export default ProductCarouselSection;
