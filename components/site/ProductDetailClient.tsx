@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { resolveMediaUrl } from "@/lib/media";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 import type {
   ColorOption,
   VariantSummary,
@@ -317,6 +318,20 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     : null;
   const savings = hasDiscount ? comparePrice! - price : null;
   const sym = product.currency?.symbol ?? "৳";
+
+  useEffect(() => {
+    try {
+      trackMetaEvent("ViewContent", {
+        content_name: product.title,
+        content_ids: [String(product.id)],
+        content_type: "product",
+        value: price,
+        currency: "BDT",
+      });
+    } catch {
+      // Non-fatal if pixel tracking fails
+    }
+  }, [product.id, product.title, price]);
 
   /* images */
   const images = product.gallery?.length

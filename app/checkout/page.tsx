@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart";
 import { getAddresses, type CustomerAddress } from "@/lib/auth";
 import { formatItemAttributes } from "@/lib/attributes";
 import { resolveMediaUrl } from "@/lib/media";
+import { trackMetaEvent, getMetaCookie } from "@/lib/meta-pixel";
 
 export default function CheckoutPage() {
   const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart, removeFromCart } = useCart();
@@ -84,6 +85,28 @@ export default function CheckoutPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryType]);
+
+  const initiatedCheckoutRef = useRef(false);
+  useEffect(() => {
+    if (!initiatedCheckoutRef.current && items.length > 0) {
+      initiatedCheckoutRef.current = true;
+      try {
+        trackMetaEvent("InitiateCheckout", {
+          num_items: items.length,
+          value: displayTotal,
+          currency: "BDT",
+          content_type: "product",
+          contents: items.map((item) => ({
+            id: String(item.variantId || item.productId),
+            quantity: item.quantity,
+            item_price: item.price,
+          })),
+        });
+      } catch {
+        // Non-fatal if pixel tracking fails
+      }
+    }
+  }, [items, displayTotal]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -229,6 +252,8 @@ export default function CheckoutPage() {
     setLoading(true);
 
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const fbp = getMetaCookie("_fbp");
+    const fbc = getMetaCookie("_fbc");
 
     const orderData = {
       name: form.name.trim(),
@@ -247,6 +272,8 @@ export default function CheckoutPage() {
       payment_method: paymentMethod,
       delivery_charge: deliveryCharge,
       coupon_code: couponApplied ? coupon : undefined,
+      fbp,
+      fbc,
       items: items.map((item) => ({
         product_id: item.productId,
         variant_id: item.variantId,
@@ -259,6 +286,8 @@ export default function CheckoutPage() {
 
     const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (fbp) headers["X-FBP"] = fbp;
+    if (fbc) headers["X-FBC"] = fbc;
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/orders`, {
@@ -324,6 +353,28 @@ export default function CheckoutPage() {
         setError(data.message ?? "Order failed. Please try again.");
         setLoading(false);
         return;
+      }
+
+      try {
+        trackMetaEvent(
+          "Purchase",
+          {
+            currency: "BDT",
+            value: displayTotal,
+            content_type: "product",
+            content_ids: items.map((item) => String(item.variantId || item.productId)),
+            contents: items.map((item) => ({
+              id: String(item.variantId || item.productId),
+              quantity: item.quantity,
+              item_price: item.price,
+            })),
+            num_items: items.length,
+            order_id: data.order_number,
+          },
+          data.event_id
+        );
+      } catch {
+        // Non-fatal if pixel tracking fails
       }
 
       await refreshCart();

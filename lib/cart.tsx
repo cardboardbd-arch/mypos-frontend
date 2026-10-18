@@ -11,6 +11,7 @@ import {
 } from "./cart-api";
 import { normalizeItemAttributes } from "./attributes";
 import { resolveMediaUrl } from "./media";
+import { trackMetaEvent } from "./meta-pixel";
 
 // ─── Context cart item shape (camelCase) ─────────────────────────────────────
 
@@ -242,6 +243,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       line_total: item.price * qty,
     };
     dispatch({ type: "ADD", item: optimistic });
+    try {
+      trackMetaEvent("AddToCart", {
+        content_ids: [String(item.variantId || item.productId)],
+        content_name: item.name,
+        content_type: "product",
+        contents: [
+          {
+            id: String(item.variantId || item.productId),
+            quantity: qty,
+            item_price: item.price,
+          },
+        ],
+        value: item.price * qty,
+        currency: "BDT",
+      });
+    } catch {
+      // Non-fatal if pixel tracking fails
+    }
     try {
       const apiItem = await addToCartApi(item.productId, item.variantId, qty);
       dispatch({ type: "UPSERT_ITEM", item: mapApiItem(apiItem) });
