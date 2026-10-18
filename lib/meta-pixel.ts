@@ -16,8 +16,6 @@ declare global {
   }
 }
 
-export const DEFAULT_PIXEL_ID = "1915866925691809";
-
 let initialized = false;
 let currentPixelId: string | null = null;
 
@@ -55,26 +53,28 @@ function ensureFbqStub(): void {
   /* eslint-enable */
 }
 
-// Auto-inject stub immediately on client so queue is ready
-if (typeof window !== "undefined") {
-  ensureFbqStub();
+export function isPixelInitialized(): boolean {
+  return initialized && !!currentPixelId;
 }
 
 /**
- * Initializes the Meta Pixel and flushes any queued events.
+ * Initializes the Meta Pixel dynamically from backend settings.
+ * If no pixelId is provided from backend admin settings, does nothing.
  */
-export function initMetaPixel(pixelId: string = DEFAULT_PIXEL_ID): void {
-  if (typeof window === "undefined" || !pixelId) return;
+export function initMetaPixel(pixelId?: string | null): void {
+  if (typeof window === "undefined" || !pixelId || !pixelId.trim()) return;
+
+  const cleanId = pixelId.trim();
 
   ensureFbqStub();
 
-  if (currentPixelId === pixelId && initialized) return;
+  if (currentPixelId === cleanId && initialized) return;
 
-  currentPixelId = pixelId;
+  currentPixelId = cleanId;
   initialized = true;
 
   if (typeof window.fbq === "function") {
-    window.fbq("init", pixelId);
+    window.fbq("init", cleanId);
     window.fbq("track", "PageView");
 
     // Flush any events that fired before init completed
@@ -91,7 +91,7 @@ export function initMetaPixel(pixelId: string = DEFAULT_PIXEL_ID): void {
 
 /**
  * Safe fbq('track', ...) wrapper.
- * If pixel is not yet initialized, events are queued and flushed upon initialization.
+ * Only sends events if a Pixel ID has been dynamically configured from backend settings.
  */
 export function trackMetaEvent(
   name: string,
@@ -106,12 +106,10 @@ export function trackMetaEvent(
     } else {
       window.fbq("track", name, params);
     }
-  } else {
-    // Queue event until pixel is initialized
-    eventQueue.push({ name, params, eventId });
-    if (!initialized) {
-      const fallbackId = process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_PIXEL_ID;
-      initMetaPixel(fallbackId);
+  } else if (!initialized) {
+    // If not initialized yet, queue event in case backend settings return a pixel ID shortly
+    if (eventQueue.length < 20) {
+      eventQueue.push({ name, params, eventId });
     }
   }
 }
