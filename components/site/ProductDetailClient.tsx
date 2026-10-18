@@ -236,6 +236,10 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     if (variant.image) setSelectedImage(variant.image);
   }
 
+  /* stock */
+  const inStock = product.stock_status !== "out_of_stock";
+  const lowStock = product.stock_status === "low_stock";
+
   const effectiveVariant = selectedVariant || (product.variants && product.variants.length > 0 ? product.variants[0] : null);
   const canAddToCart = inStock && (effectiveVariant !== null || (!product.variants || product.variants.length === 0));
 
@@ -363,9 +367,6 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
     }
   }, [selectedImage, images]);
 
-  /* stock */
-  const inStock = product.stock_status !== "out_of_stock";
-  const lowStock = product.stock_status === "low_stock";
 
   /* specifications */
   const specifications = useMemo(() => {
