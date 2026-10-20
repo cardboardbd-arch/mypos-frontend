@@ -65,10 +65,10 @@ const FB_SOCIAL_LINKS: SocialLink[] = [
   { platform: "youtube",   url: "#" },
 ];
 const FB_BRAND: Brand = {
-  name: "Marvelous Lifestyle",
+  name: "Zain Lifestyle",
   tagline: "Bangladesh's Luxury Lifestyle Brand",
   description: "Your one-stop destination for quality products at the best prices. Shop smart, live better.",
-  copyright: "© 2026 Marvelous Lifestyle. All rights reserved.",
+  copyright: "© 2026 Zain Lifestyle. All rights reserved.",
 };
 
 export function Footer({ footer: footerProp, socialLinks: socialLinksProp, showFeatureBar = true }: Props = {}) {

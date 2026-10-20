@@ -130,11 +130,11 @@ function getStoredLogo(): string | null {
 }
 
 function getStoredSiteName(): string {
-  if (typeof window === "undefined") return "Marvelous Lifestyle";
+  if (typeof window === "undefined") return "Zain Lifestyle";
   try {
-    return localStorage.getItem(NAME_CACHE_KEY) || "Marvelous Lifestyle";
+    return localStorage.getItem(NAME_CACHE_KEY) || "Zain Lifestyle";
   } catch {
-    return "Marvelous Lifestyle";
+    return "Zain Lifestyle";
   }
 }
 
@@ -246,7 +246,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
           {logoUrl && !logoError ? (
             <Image
               src={logoUrl}
-              alt={siteName || "Marvelous Lifestyle"}
+              alt={siteName || "Zain Lifestyle"}
               width={180}
               height={48}
               loading="eager"
@@ -259,7 +259,7 @@ export function Nav({ navLinks: navLinksProp, logoUrl: logoUrlProp, siteName: si
           ) : (
             <div className="flex flex-col py-1">
               <span className="font-black text-xl md:text-2xl tracking-tight uppercase text-black leading-tight group-hover:text-gray-700 transition">
-                {siteName || "Marvelous Lifestyle"}
+                {siteName || "Zain Lifestyle"}
               </span>
               <span className="text-[9px] tracking-[0.25em] font-semibold text-gray-500 uppercase">
                 Luxury Lifestyle
