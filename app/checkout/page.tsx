@@ -527,13 +527,6 @@ export default function CheckoutPage() {
                       className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.phone ? "border-red-300" : "border-gray-200"}`} />
                     {validationErrors.phone && <p className="text-red-500 text-xs mt-1">{validationErrors.phone}</p>}
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Email Address <span className="text-gray-300">(Optional)</span></label>
-                    <input name="email" value={form.email} onChange={handleChange}
-                      placeholder="your@email.com"
-                      className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.email ? "border-red-300" : "border-gray-200"}`} />
-                    {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
-                  </div>
                 </div>
               </div>
 
@@ -650,6 +643,14 @@ export default function CheckoutPage() {
                       </div>
                     </>
                   )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Email Address <span className="text-gray-300">(Optional)</span></label>
+                    <input name="email" value={form.email} onChange={handleChange}
+                      placeholder="your@email.com"
+                      className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.email ? "border-red-300" : "border-gray-200"}`} />
+                    {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
+                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Order Notes <span className="text-gray-300">(Optional)</span></label>
