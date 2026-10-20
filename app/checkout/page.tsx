@@ -108,10 +108,73 @@ export default function CheckoutPage() {
     }
   }, [items, displayTotal]);
 
+  const abandonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  function saveAbandonedCart(overrideForm?: typeof form) {
+    if (typeof window === "undefined") return;
+    const current = overrideForm || form;
+    const phone = current.phone.trim();
+    const email = current.email.trim();
+    if (!phone && !email) return;
+    if (items.length === 0) return;
+
+    let sessionId = localStorage.getItem("cart_session_id");
+    if (!sessionId) {
+      sessionId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem("cart_session_id", sessionId);
+    }
+
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+    if (!apiBase) return;
+
+    fetch(`${apiBase}/v1/cart/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Session-ID": sessionId,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        guest_phone: phone,
+        guest_email: email || undefined,
+        name: current.name.trim() || undefined,
+        subtotal: cartTotal,
+        coupon_code: couponApplied ? coupon : undefined,
+        items: items.map(item => ({
+          product_id: item.productId,
+          variant_id: item.variantId,
+          product_name: item.name,
+          name: item.name,
+          unit_price: item.price,
+          price: item.price,
+          qty: item.quantity,
+          quantity: item.quantity,
+          attributes: item.attributes,
+          guest_name: current.name.trim() || undefined,
+        })),
+      }),
+    }).catch(() => {});
+  }
+
+  function scheduleAbandonedSave(updatedForm: typeof form) {
+    if (abandonTimeoutRef.current) clearTimeout(abandonTimeoutRef.current);
+    const cleanPhone = updatedForm.phone.trim().replace(/[\s-]/g, "");
+    if (cleanPhone.length >= 10 || (updatedForm.email && updatedForm.email.includes("@"))) {
+      abandonTimeoutRef.current = setTimeout(() => {
+        saveAbandonedCart(updatedForm);
+      }, 1500);
+    }
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const updated = { ...form, [e.target.name]: e.target.value };
+    setForm(updated);
     if (validationErrors[e.target.name]) {
       setValidationErrors(prev => ({ ...prev, [e.target.name]: "" }));
+    }
+    if (["phone", "email", "name"].includes(e.target.name)) {
+      scheduleAbandonedSave(updated);
     }
   }
 
@@ -299,6 +362,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        saveAbandonedCart(form);
         if (data.errors) {
           const fieldErrors: Record<string, string> = {};
           const unmappedErrors: string[] = [];
@@ -350,6 +414,7 @@ export default function CheckoutPage() {
       }
 
       if (!data.order_number) {
+        saveAbandonedCart(form);
         setError(data.message ?? "Order failed. Please try again.");
         setLoading(false);
         return;
@@ -392,6 +457,7 @@ export default function CheckoutPage() {
       await startGatewayPayment(data.id, data.order_number);
       setLoading(false);
     } catch {
+      saveAbandonedCart(form);
       setError("Network error. Please check your connection and try again.");
       setLoading(false);
     }
