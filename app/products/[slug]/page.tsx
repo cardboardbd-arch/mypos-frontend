@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProduct } from "@/lib/api";
@@ -6,6 +7,8 @@ import { Footer } from "@/components/site/Footer";
 import { ProductDetailClient } from "@/components/site/ProductDetailClient";
 import { buildSeoMetadata } from "@/lib/seo-metadata";
 import type { WebsiteProductDetail } from "@/lib/types/product";
+
+export const revalidate = 60;
 
 /**
  * WP6 — first genuine SSR in this app (there was none before this: the
@@ -23,14 +26,14 @@ import type { WebsiteProductDetail } from "@/lib/types/product";
  * products.slug) will 404 here. See the WP6 report for the full
  * cross-page-link risk this creates.
  */
-async function fetchProduct(slug: string): Promise<WebsiteProductDetail | null> {
+const fetchProduct = cache(async (slug: string): Promise<WebsiteProductDetail | null> => {
   try {
     const res = await getProduct(slug);
     return (res?.data as WebsiteProductDetail) ?? null;
   } catch {
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,

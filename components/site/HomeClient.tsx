@@ -98,12 +98,13 @@ interface HomeData {
  * behavior/design change — same fetch, same loading/error states, same
  * markup.
  */
-export default function HomeClient() {
-  const [data, setData] = useState<HomeData | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function HomeClient({ initialData }: { initialData?: HomeData | null } = {}) {
+  const [data, setData] = useState<HomeData | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (initialData) return;
     const rawBase = process.env.NEXT_PUBLIC_API_URL || "";
     const apiBase = rawBase.replace(/\/+$/, "");
 

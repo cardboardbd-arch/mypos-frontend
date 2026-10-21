@@ -20,6 +20,7 @@ export async function getProducts(
 ) {
   const res = await fetch(`${BASE}/v1/products${buildQs(params)}`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -28,6 +29,7 @@ export async function getProducts(
 export async function getProduct(slug: string) {
   const res = await fetch(`${BASE}/v1/products/${encodeURIComponent(slug)}`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -36,6 +38,7 @@ export async function getProduct(slug: string) {
 export async function getCategories() {
   const res = await fetch(`${BASE}/v1/categories`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -44,6 +47,7 @@ export async function getCategories() {
 export async function getCategory(slug: string) {
   const res = await fetch(`${BASE}/v1/categories/${encodeURIComponent(slug)}`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -52,6 +56,7 @@ export async function getCategory(slug: string) {
 export async function getBrands() {
   const res = await fetch(`${BASE}/v1/brands`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -60,6 +65,7 @@ export async function getBrands() {
 export async function getBrand(slug: string) {
   const res = await fetch(`${BASE}/v1/brands/${encodeURIComponent(slug)}`, {
     headers: { Accept: "application/json" },
+    next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

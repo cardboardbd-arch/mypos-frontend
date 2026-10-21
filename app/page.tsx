@@ -21,13 +21,9 @@ import HomeClient from "@/components/site/HomeClient";
  */
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-// Without this, Next statically prerenders "/" at build time (it has no
-// [slug] segment forcing dynamic rendering the way the other four SEO
-// pages get automatically) and freezes generateMetadata()'s fetch result
-// into that build — admin SEO edits wouldn't show up until the next
-// deploy. This restores the same per-request behavior every other SEO
-// page already has; it disables caching, it doesn't add any.
-export const dynamic = "force-dynamic";
+// Incremental Static Regeneration: revalidates every 60 seconds.
+// Eliminates the 3-second TTFB latency and serves cached HTML instantly.
+export const revalidate = 60;
 
 interface HomeSeo {
   title: string | null;
@@ -37,29 +33,23 @@ interface HomeSeo {
   robots: string | null;
 }
 
-async function fetchHomeSeo(): Promise<HomeSeo | null> {
+async function fetchHomeData(): Promise<any | null> {
   try {
-    // /v1/home's payload is the full homepage feed (sections, categories,
-    // products, theme, ...) — HomeClient fetches it again client-side for
-    // the page body. This second, server-side fetch of the same endpoint
-    // just for the small top-level `seo` object is the same "known,
-    // accepted overhead for one field" pattern already used elsewhere in
-    // this codebase (app/shop/page.tsx fetches /v1/home solely to read
-    // theme.product_display_mode) — there's no lighter existing endpoint
-    // that returns only the seo block.
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/home`, {
       headers: { Accept: "application/json" },
+      next: { revalidate: 60 },
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return (json?.data?.seo as HomeSeo) ?? null;
+    return json?.data ?? null;
   } catch {
     return null;
   }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seo = await fetchHomeSeo();
+  const homeData = await fetchHomeData();
+  const seo = homeData?.seo as HomeSeo | undefined;
 
   const title = seo?.title ?? undefined;
   const description = seo?.description ?? undefined;
@@ -90,6 +80,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function HomePage() {
-  return <HomeClient />;
+export default async function HomePage() {
+  const homeData = await fetchHomeData();
+  return <HomeClient initialData={homeData} />;
 }
