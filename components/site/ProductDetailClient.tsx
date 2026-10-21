@@ -274,6 +274,16 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       },
       quantity
     );
+
+    try {
+      trackMetaEvent("AddToCart", {
+        content_name: product.title,
+        content_ids: [String(variantId || product.product_id || (product as any).id)],
+        content_type: "product",
+        value: variantPrice * quantity,
+        currency: "BDT",
+      });
+    } catch {}
   }
 
   async function handleBuyNow() {
@@ -289,6 +299,16 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
       product.gallery?.[0]?.image ||
       null;
     const thumb = resolveMediaUrl(rawThumb) || rawThumb || undefined;
+
+    try {
+      trackMetaEvent("AddToCart", {
+        content_name: product.title,
+        content_ids: [String(variantId || product.product_id || (product as any).id)],
+        content_type: "product",
+        value: variantPrice * quantity,
+        currency: "BDT",
+      });
+    } catch {}
 
     await addToCart(
       {
@@ -411,7 +431,7 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
         />
       )}
 
-      <div className="max-w-[1360px] mx-auto px-4 md:px-6 lg:px-8 py-5">
+      <div className="max-w-[1360px] mx-auto px-4 md:px-6 lg:px-8 py-5 pb-24 md:pb-8">
 
         {/* Breadcrumb */}
         <nav className="flex items-center flex-wrap gap-1 text-xs text-gray-400 mb-5">
@@ -734,6 +754,22 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
               </button>
             </div>
 
+            {/* Quick Trust Badges */}
+            <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Truck className="h-4 w-4 text-amber-700 shrink-0" />
+                ক্যাশ অন ডেলিভারি
+              </span>
+              <span className="flex items-center gap-1.5 font-bold">
+                <Check className="h-4 w-4 text-amber-700 shrink-0" />
+                দেখে নেওয়ার সুবিধা
+              </span>
+              <span className="flex items-center gap-1.5 font-bold">
+                <RefreshCcw className="h-4 w-4 text-amber-700 shrink-0" />
+                সহজ রিটার্ন
+              </span>
+            </div>
+
             {/* Wishlist + Compare */}
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <button className="flex items-center gap-1.5 hover:text-red-500 transition">
@@ -985,6 +1021,22 @@ export function ProductDetailClient({ initialProduct }: ProductDetailClientProps
             </div>
           </div>
         )}
+
+        {/* Mobile Sticky Bottom CTA Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] flex items-center gap-3">
+          <div className="min-w-0 flex-1 pl-1">
+            <p className="text-[11px] font-semibold text-gray-500 truncate">{product.title}</p>
+            <p className="text-base font-black text-gray-900">{sym}{price.toLocaleString()}</p>
+          </div>
+          <button
+            onClick={handleBuyNow}
+            disabled={!canAddToCart}
+            className="flex-1 bg-black text-white hover:bg-gray-800 active:scale-[0.98] py-3.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-40 cursor-pointer"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            অর্ডার করুন
+          </button>
+        </div>
 
       </div>
     </div>

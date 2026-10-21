@@ -10,6 +10,20 @@ import { formatItemAttributes } from "@/lib/attributes";
 import { resolveMediaUrl } from "@/lib/media";
 import { trackMetaEvent, getMetaCookie } from "@/lib/meta-pixel";
 
+const BANGLADESH_DISTRICTS = [
+  "Dhaka", "Faridpur", "Gazipur", "Gopalganj", "Kishoreganj", "Madaripur", "Manikganj",
+  "Munshiganj", "Narayanganj", "Narsingdi", "Rajbari", "Shariatpur", "Tangail",
+  "Bagerhat", "Chuadanga", "Jashore", "Jhenaidah", "Khulna", "Kushtia", "Magura",
+  "Meherpur", "Narail", "Satkhira",
+  "Chattogram", "Bandarban", "Brahmanbaria", "Chandpur", "Cox's Bazar", "Cumilla",
+  "Feni", "Khagrachhari", "Lakshmipur", "Noakhali", "Rangamati",
+  "Barishal", "Barguna", "Bhola", "Jhalokati", "Patuakhali", "Pirojpur",
+  "Bogura", "Joypurhat", "Naogaon", "Natore", "Chapai Nawabganj", "Pabna", "Rajshahi", "Sirajganj",
+  "Dinajpur", "Gaibandha", "Kurigram", "Lalmonirhat", "Nilphamari", "Panchagarh", "Rangpur", "Thakurgaon",
+  "Habiganj", "Moulvibazar", "Sunamganj", "Sylhet",
+  "Jamalpur", "Mymensingh", "Netrokona", "Sherpur"
+].sort();
+
 export default function CheckoutPage() {
   const { items, cartTotal, loading: cartLoading, error: cartError, refreshCart, removeFromCart } = useCart();
   const [form, setForm] = useState({
@@ -173,8 +187,25 @@ export default function CheckoutPage() {
     if (validationErrors[e.target.name]) {
       setValidationErrors(prev => ({ ...prev, [e.target.name]: "" }));
     }
+    if (e.target.name === "city") {
+      const selectedCity = e.target.value.trim().toLowerCase();
+      if (selectedCity === "dhaka") {
+        setDeliveryType("inside");
+      } else {
+        setDeliveryType("outside");
+      }
+    }
     if (["phone", "email", "name"].includes(e.target.name)) {
       scheduleAbandonedSave(updated);
+    }
+  }
+
+  function handleDeliveryZoneSelect(zone: "inside" | "outside") {
+    setDeliveryType(zone);
+    if (zone === "inside") {
+      setForm(prev => ({ ...prev, city: "Dhaka" }));
+    } else if (zone === "outside" && form.city.trim().toLowerCase() === "dhaka") {
+      setForm(prev => ({ ...prev, city: "Chattogram" }));
     }
   }
 
@@ -572,6 +603,22 @@ export default function CheckoutPage() {
             {/* LEFT COLUMN */}
             <div className="space-y-4">
 
+              {/* Trust Reassurance Strip */}
+              <div className="bg-emerald-50 border border-emerald-200/70 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-emerald-950 text-xs">
+                <div className="flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>ক্যাশ অন ডেলিভারি (পণ্য পেয়ে মূল্য পরিশোধ)</span>
+                </div>
+                <div className="flex items-center gap-2 font-bold">
+                  <Truck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>সারাদেশে হোম ডেলিভারি</span>
+                </div>
+                <div className="flex items-center gap-2 font-bold">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>সহজ এক্সচেঞ্জ ও রিটার্ন</span>
+                </div>
+              </div>
+
               {/* STEP 1 — Contact Info */}
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
@@ -613,7 +660,7 @@ export default function CheckoutPage() {
                         { key: "outside", title: "Outside Dhaka", sub: "Tk 120  •  3-5 days" },
                       ].map(opt => (
                         <button key={opt.key} type="button"
-                          onClick={() => setDeliveryType(opt.key as "inside" | "outside")}
+                          onClick={() => handleDeliveryZoneSelect(opt.key as "inside" | "outside")}
                           className={`relative flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             ${deliveryType === opt.key ? "border-black bg-black text-white" : "border-gray-200 hover:border-gray-400 bg-white"}`}>
                           <Truck className="h-5 w-5 mt-0.5 shrink-0" />
@@ -700,7 +747,7 @@ export default function CheckoutPage() {
                           <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">City / District <span className="text-red-500">*</span></label>
                           <select name="city" value={form.city} onChange={handleChange}
                             className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition bg-gray-50 focus:bg-white ${validationErrors.city ? "border-red-300" : "border-gray-200"}`}>
-                            {["Dhaka","Chattogram","Sylhet","Rajshahi","Khulna","Barishal","Rangpur","Mymensingh","Comilla","Narayanganj","Gazipur"].map(c => (
+                            {BANGLADESH_DISTRICTS.map(c => (
                               <option key={c} value={c}>{c}</option>
                             ))}
                           </select>

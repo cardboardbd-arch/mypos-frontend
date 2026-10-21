@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { resolveMediaUrl } from "@/lib/media";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 import { ColorSelector } from "@/components/site/ColorSelector";
 import type { ProductCardColorOption } from "@/lib/types/product";
 
@@ -74,6 +75,17 @@ export function ProductCard({ title, colors }: ProductCardProps) {
       },
       1
     );
+
+    try {
+      trackMetaEvent("AddToCart", {
+        content_name: title,
+        content_ids: [String(variantId || productId)],
+        content_type: "product",
+        value: price,
+        currency: "BDT",
+      });
+    } catch {}
+
     showToast();
   }
 
@@ -84,6 +96,17 @@ export function ProductCard({ title, colors }: ProductCardProps) {
       return;
     }
     const resolvedThumbnail = (resolveMediaUrl(thumbnail) || thumbnail) ?? undefined;
+
+    try {
+      trackMetaEvent("AddToCart", {
+        content_name: title,
+        content_ids: [String(variantId || productId)],
+        content_type: "product",
+        value: price,
+        currency: "BDT",
+      });
+    } catch {}
+
     await addToCart(
       {
         id: variantId,
